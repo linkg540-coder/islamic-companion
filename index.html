@@ -383,7 +383,7 @@ function scheduleJournalReminder(){
   const[h,m]=(Settings.get('journalRemTime')||'21:00').split(':').map(Number);
   const now=new Date();const target=new Date(now);target.setHours(h,m,0,0);
   if(target<=now)target.setDate(target.getDate()+1);
-  jrTimer=setTimeout(()=>{new Notification('📓 Journal Reminder',{body:'Take a moment to write tonight\'s journal entry.',tag:'journal-reminder'});scheduleJournalReminder()},target-now);
+  jrTimer=setTimeout(()=>{const n=new Notification('📓 Journal Reminder',{body:'Take a moment to write tonight\'s journal entry.',tag:'journal-reminder'});n.onclick=function(){window.focus();showTab('journal',document.querySelector('.tab-btn[onclick*="showTab(\'journal\'"]'));showJournalPane('reminder',null);n.close()};scheduleJournalReminder()},target-now);
 }
 function jGetAll(){return Settings.getJSON('journal',[]);}
 function saveJournalEntry(){
@@ -966,4 +966,12 @@ if(document.readyState==='loading'){
   }
 })();
 scheduleJournalReminder();
+(function(){
+  var h=location.hash;
+  if(h==='#journal'||h==='#journal-reminder'){
+    var btn=document.querySelector('.tab-btn[onclick*="showTab(\'journal\'"]');
+    if(btn)showTab('journal',btn);
+    if(h==='#journal-reminder')showJournalPane('reminder',null);
+  }
+})();
 </script></body></html>
