@@ -55,12 +55,13 @@ document.addEventListener('dblclick',function(e){e.preventDefault()});
 let lastTouchEnd=0;
 document.addEventListener('touchend',function(e){const now=Date.now();if(now-lastTouchEnd<=300){e.preventDefault()}lastTouchEnd=now},{passive:false});
 </script><div class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Toggle light/dark">🌙</div><div class="notif-bell" id="notifBell" onclick="toggleNotifications()" title="Enable prayer notifications">🔔</div><div class="header"><div class="credits"><span>👑 Owner/Creator: <b>Link Geoffrey</b></span><span>💫 Inspiration: <b>Mariam Akhter</b></span></div><h1>🕌 Islamic Companion 🌸</h1><p>Prayer · Quran · Qibla · Duas · Tasbih · Knowledge · Adhan · Themes</p><div class="hijri" id="hijriDate">Loading Hijri date…</div></div><div id="dailyVerse" style="max-width:600px;margin:0 auto;padding:0.8rem 1.5rem;text-align:center;background:rgba(30, 64, 175,.08);border-radius:0 0 1rem 1rem;border:1px solid var(--border);border-top:none"><div style="color:var(--emerald-light);font-size:.8rem;margin-bottom:.3rem">📖 Verse of the Day</div><div id="dailyVerseAr" style="font-family:'Amiri',serif;font-size:1.4rem;color:var(--gold);direction:rtl;margin:.3rem 0;line-height:1.8">Loading…</div><div id="dailyVerseEn" style="color:#ff5c8a;font-size:.85rem;line-height:1.5;margin-top:.3rem"></div><div id="dailyVerseRef" style="color:var(--emerald-light);font-size:.8rem;margin-top:.3rem"></div></div><div class="nav-tabs"><button class="tab-btn active" onclick="showTab('prayer', this)">🕌 Prayer</button><button class="tab-btn" onclick="showTab('quran', this)">📖 Quran</button><button class="tab-btn" onclick="showTab('qibla', this)">🧭 Qibla</button><button class="tab-btn" onclick="showTab('duas', this)">🤲 Duas</button><button class="tab-btn" onclick="showTab('greets', this)">🗣️ Greetings</button><button class="tab-btn" onclick="showTab('hadiths', this)">📜 Hadiths</button><button class="tab-btn" onclick="showTab('ramadan', this)">🌙 Ramadan</button><button class="tab-btn" onclick="showTab('tasbih', this)">📿 Tasbih</button><button class="tab-btn" onclick="showTab('ai', this)">📚 Knowledge</button><button class="tab-btn" onclick="showTab('towns', this)">🗺️ Locations</button><button class="tab-btn" onclick="showTab('mosques', this)">🕌 Mosques</button><button class="tab-btn" onclick="showTab('journal', this)">📓 Journal</button><button class="tab-btn" onclick="showTab('sync', this)">☁️ Sync</button></div><div <div class="tab-content" id="tab-sync"><div class="card"><div class="card-title">☁️ Cloud Sync — Your Account</div><div id="syncOut"><p style="color:var(--muted);font-size:0.9rem;line-height:1.6;margin-bottom:1rem">Create an account to back up your journal, trackers and settings. Log in on any device to restore everything.</p><div class="location-bar"><input type="email" id="syncEmail" placeholder="Email" autocomplete="email" style="min-width:200px"><input type="password" id="syncPw" placeholder="Password (6+ chars)" autocomplete="new-password" style="min-width:180px"></div><div class="location-bar" style="margin-bottom:0"><button onclick="syncDoRegister()">✨ Create account</button><button onclick="syncDoLogin()" style="border-color:var(--emerald-light)">Log in</button><button onclick="syncWipeDevice(false)" style="border-color:var(--danger);color:var(--danger)">Clear this device</button></div></div><div id="syncIn" style="display:none"><p id="syncWho" style="color:var(--gold);font-size:0.9rem;margin-bottom:0.8rem"></p><div class="location-bar"><button onclick="syncUpload()">⬆️ Back up now</button><button onclick="syncRestore()" style="border-color:var(--emerald-light)">⬇️ Restore</button><button onclick="syncLogout()" style="border-color:var(--accent);color:var(--accent)">Log out</button></div><p style="color:var(--muted);font-size:0.8rem;line-height:1.5;margin-top:0.8rem">Auto-backup runs a few seconds after each change. Restore replaces this device's data with the cloud copy.</p></div></div></div><div class="tab-content" id="tab-journal">
-<style>.j-subtabs{display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1rem}.ci-label{color:var(--muted);font-size:0.8rem;margin:0.8rem 0 0.3rem}.ci-moods{display:flex;gap:0.5rem;flex-wrap:wrap}.ci-mood-btn{font-size:1.6rem;background:var(--card);border:1px solid var(--border);border-radius:0.8rem;padding:0.4rem 0.7rem;cursor:pointer;transition:all .2s}.ci-mood-btn.sel{border-color:var(--gold);background:rgba(212,175,55,.15);transform:scale(1.12)}.ci-input{width:100%;background:var(--night-light);border:1px solid var(--border);border-radius:0.6rem;color:var(--text);padding:0.6rem;font-family:inherit;resize:vertical;margin-bottom:0.2rem}.ci-input:focus{outline:none;border-color:var(--gold)}.ci-save{margin-top:0.8rem;width:100%;padding:0.7rem;border-radius:2rem;border:1px solid var(--gold);background:linear-gradient(135deg,var(--emerald),var(--emerald-dark));color:#fff;font-size:0.95rem;cursor:pointer}.ci-save:hover{box-shadow:0 2px 15px rgba(13,148,136,0.4)}.ci-item{padding:0.6rem 0;border-bottom:1px solid var(--border);font-size:0.85rem}.ci-item:last-child{border-bottom:none}.ci-item .ci-d{color:var(--gold);font-weight:600;font-size:0.8rem}.j-entry{padding:0.8rem;border:1px solid var(--border);border-radius:0.6rem;margin-bottom:0.6rem;background:var(--night-light)}.j-head{display:flex;justify-content:space-between;font-size:0.75rem;color:var(--muted)}.j-del{cursor:pointer;opacity:.5}.j-del:hover{opacity:1}.j-title{color:var(--gold);font-weight:600;margin:0.3rem 0;font-size:0.95rem}.j-body{font-size:0.88rem;line-height:1.5;color:var(--text);white-space:pre-wrap}.ci-actions{display:flex;gap:.5rem;margin-top:.4rem}.ci-actions button{background:var(--night-light);border:1px solid var(--border);border-radius:2rem;color:var(--muted);font-size:.72rem;padding:.25rem .7rem;cursor:pointer;transition:all .2s}.ci-actions button:hover{color:var(--gold);border-color:var(--gold)}</style>
+<style>.j-subtabs{display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1rem}.ci-label{color:var(--muted);font-size:0.8rem;margin:0.8rem 0 0.3rem}.ci-moods{display:flex;gap:0.5rem;flex-wrap:wrap}.ci-mood-btn{font-size:1.6rem;background:var(--card);border:1px solid var(--border);border-radius:0.8rem;padding:0.4rem 0.7rem;cursor:pointer;transition:all .2s}.ci-mood-btn.sel{border-color:var(--gold);background:rgba(212,175,55,.15);transform:scale(1.12)}.ci-input{width:100%;background:var(--night-light);border:1px solid var(--border);border-radius:0.6rem;color:var(--text);padding:0.6rem;font-family:inherit;resize:vertical;margin-bottom:0.2rem}.ci-input:focus{outline:none;border-color:var(--gold)}.ci-save{margin-top:0.8rem;width:100%;padding:0.7rem;border-radius:2rem;border:1px solid var(--gold);background:linear-gradient(135deg,var(--emerald),var(--emerald-dark));color:#fff;font-size:0.95rem;cursor:pointer}.ci-save:hover{box-shadow:0 2px 15px rgba(13,148,136,0.4)}.ci-item{padding:0.6rem 0;border-bottom:1px solid var(--border);font-size:0.85rem}.ci-item:last-child{border-bottom:none}.ci-item .ci-d{color:var(--gold);font-weight:600;font-size:0.8rem}.j-entry{padding:0.8rem;border:1px solid var(--border);border-radius:0.6rem;margin-bottom:0.6rem;background:var(--night-light)}.j-head{display:flex;justify-content:space-between;font-size:0.75rem;color:var(--muted)}.j-del{cursor:pointer;opacity:.5}.j-del:hover{opacity:1}.j-title{color:var(--gold);font-weight:600;margin:0.3rem 0;font-size:0.95rem}.j-body{font-size:0.88rem;line-height:1.5;color:var(--text);white-space:pre-wrap}.ci-actions{display:flex;gap:.5rem;margin-top:.4rem}.ci-actions button{background:var(--night-light);border:1px solid var(--border);border-radius:2rem;color:var(--muted);font-size:.72rem;padding:.25rem .7rem;cursor:pointer;transition:all .2s}.ci-actions button:hover{color:var(--gold);border-color:var(--gold)}.jr-switch{position:relative;display:inline-block;width:54px;height:28px}.jr-switch input{opacity:0;width:0;height:0}.jr-slider{position:absolute;cursor:pointer;inset:0;background:var(--night-light);border:1px solid var(--border);border-radius:28px;transition:.3s}.jr-slider:before{content:"";position:absolute;height:20px;width:20px;left:3px;top:3px;background:var(--muted);border-radius:50%;transition:.3s}.jr-switch input:checked + .jr-slider{background:rgba(13,148,136,.55);border-color:var(--emerald)}.jr-switch input:checked + .jr-slider:before{transform:translateX(26px);background:var(--emerald-light)}</style>
 <div class="card">
 <div class="card-title">📓 Journal</div>
 <div class="j-subtabs">
 <button class="tab-btn active" id="jsb-checkin" onclick="showJournalPane('checkin',this)">☀️ Daily Check-in</button>
 <button class="tab-btn" id="jsb-free" onclick="showJournalPane('free',this)">✍️ Free Write</button>
+<button class="tab-btn" id="jsb-reminder" onclick="showJournalPane('reminder',this)">🌙 Reminder</button>
 </div>
 </div>
 <div id="pane-checkin">
@@ -99,6 +100,17 @@ document.addEventListener('touchend',function(e){const now=Date.now();if(now-las
 <div class="card">
 <div class="card-title">📖 My Entries (<span id="jCount">0</span>)</div>
 <div id="jList"></div>
+</div>
+</div>
+<div id="pane-reminder" style="display:none">
+<div class="card">
+<div class="card-title">🌙 Nightly Journal Reminder</div>
+<p style="color:var(--muted);font-size:.85rem;line-height:1.6;margin-bottom:.2rem">A gentle nudge each night to write your journal entry — sent even when the app is closed.</p>
+<div class="ci-label">Reminder time</div>
+<input type="time" id="jrTime" class="ci-input" style="max-width:170px" value="21:00" onchange="saveJournalReminder()">
+<div class="ci-label">Enable reminder</div>
+<label class="jr-switch"><input type="checkbox" id="jrToggle" onchange="saveJournalReminder()"><span class="jr-slider"></span></label>
+<div id="jrStatus" style="margin-top:1rem;font-size:.8rem;color:var(--muted);line-height:1.5"></div>
 </div>
 </div>
 </div>
@@ -288,9 +300,62 @@ function saveCheckin(){
 function showJournalPane(pane,btn){
   document.getElementById('pane-checkin').style.display=pane==='checkin'?'block':'none';
   document.getElementById('pane-free').style.display=pane==='free'?'block':'none';
+  document.getElementById('pane-reminder').style.display=pane==='reminder'?'block':'none';
   document.getElementById('jsb-checkin').classList.toggle('active',pane==='checkin');
   document.getElementById('jsb-free').classList.toggle('active',pane==='free');
+  document.getElementById('jsb-reminder').classList.toggle('active',pane==='reminder');
+  if(pane==='reminder')jrLoad();
   if(btn&&navigator.vibrate)navigator.vibrate(10);
+}
+function jrFmt12(t){let[h,m]=t.split(':').map(Number);const ap=h>=12?'PM':'AM';h=h%12||12;return h+':'+String(m).padStart(2,'0')+' '+ap}
+function jrLoad(){const t=Settings.get('journalRemTime')||'21:00';const on=Settings.get('journalRemOn')==='1';(document.getElementById('jrTime')||{}).value=t;(document.getElementById('jrToggle')||{}).checked=on;jrStatus()}
+function jrStatus(){
+  const el=document.getElementById('jrStatus');if(!el)return;
+  const on=document.getElementById('jrToggle').checked;
+  const t=document.getElementById('jrTime').value||'21:00';
+  if(on){el.innerHTML='<span style="color:var(--gold)">🌙 On — you\'ll get a nudge at <b>'+jrFmt12(t)+'</b> each night.</span>'+(pushSub?'':' <span style="color:var(--muted)">(background alerts will be enabled when you turn it on)</span>')}
+  else{el.textContent='Off — no journal reminder will be sent.'}
+}
+async function saveJournalReminder(){
+  const t=document.getElementById('jrTime').value||'21:00';
+  const on=document.getElementById('jrToggle').checked;
+  Settings.set('journalRemTime',t);Settings.set('journalRemOn',on?'1':'0');
+  if(on&&!pushSub){
+    if(!('Notification' in window)){showToast('Notifications not supported on this device');jrStatus();return}
+    if(Notification.permission==='denied'){showToast('Please allow notifications in your browser or phone settings');jrStatus();return}
+    if(Notification.permission!=='granted'){
+      const perm=await Notification.requestPermission();notifPermission=perm;
+      if(perm!=='granted'){showToast('Notifications not enabled');jrStatus();return}
+    }
+    const reg=await getSwRegistration();
+    if(!reg){showToast('⚠️ Background alerts unavailable — reminder will only fire while the app is open');jrStatus();scheduleJournalReminder();return}
+    try{
+      pushSub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlB64ToUint8Array(PUSH_VAPID_KEY)});
+      await syncPushSubscription();
+      document.getElementById('notifBell').classList.add('active');
+      showToast('🔔 Background notifications enabled');
+    }catch(e){showToast('⚠️ Could not enable background alerts — reminder will fire in-app');jrStatus();scheduleJournalReminder();return}
+  }
+  await pushSetJournal(on?t:null);
+  scheduleJournalReminder();
+  jrStatus();
+  showToast(on?'🌙 Journal reminder set for '+jrFmt12(t)+' each night':'Journal reminder off');
+}
+async function pushSetJournal(t){
+  if(!pushSub)return;
+  const body={action:'subscribe',subscription:pushSub.toJSON(),lat:parseFloat(Settings.get('lastLat'))||0,lng:parseFloat(Settings.get('lastLng'))||0,tz:window._lastPrayerTz||userTimezone,city:String(window._lastPrayerLabel||'').slice(0,80),method:(document.getElementById('calcMethod')||{}).value||'2',school:(document.getElementById('asrSchool')||{}).value||'0'};
+  if(t){body.journalTime=t;body.journalEnabled='1'}else{body.journalTime='';body.journalEnabled='0'}
+  try{await fetch(PUSH_API+'notifSubscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})}catch(e){}
+}
+let jrTimer=null;
+function scheduleJournalReminder(){
+  if(jrTimer){clearTimeout(jrTimer);jrTimer=null}
+  if(!('Notification' in window)||Notification.permission!=='granted')return;
+  if(Settings.get('journalRemOn')!=='1')return;
+  const[h,m]=(Settings.get('journalRemTime')||'21:00').split(':').map(Number);
+  const now=new Date();const target=new Date(now);target.setHours(h,m,0,0);
+  if(target<=now)target.setDate(target.getDate()+1);
+  jrTimer=setTimeout(()=>{new Notification('📓 Journal Reminder',{body:'Take a moment to write tonight\'s journal entry.',tag:'journal-reminder'});scheduleJournalReminder()},target-now);
 }
 function jGetAll(){return Settings.getJSON('journal',[]);}
 function saveJournalEntry(){
@@ -870,4 +935,5 @@ if(document.readyState==='loading'){
     });
   }
 })();
+scheduleJournalReminder();
 </script></body></html>
