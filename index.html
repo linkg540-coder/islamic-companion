@@ -111,6 +111,7 @@ document.addEventListener('touchend',function(e){const now=Date.now();if(now-las
 <div class="ci-label">Enable reminder</div>
 <label class="jr-switch"><input type="checkbox" id="jrToggle" onchange="saveJournalReminder()"><span class="jr-slider"></span></label>
 <div id="jrStatus" style="margin-top:1rem;font-size:.8rem;color:var(--muted);line-height:1.5"></div>
+<div id="jrStreakStats" style="margin-top:.8rem;padding:.6rem .8rem;border:1px solid var(--border);border-radius:.6rem;background:var(--night-light);font-size:.82rem;line-height:1.5"></div>
 </div>
 </div>
 </div>
@@ -291,6 +292,8 @@ function saveCheckin(){
   const idx=all.findIndex(function(c){return c.date===date});
   if(idx>=0)all[idx]=entry;else all.push(entry);
   Settings.setJSON('checkins',all);
+  if(date===ciDateStr(0))jrSyncServer();
+  jrStatus();
   const wasEdit=!!ciEditDate;
   ciEditDate=null;
   renderCheckins();
@@ -315,6 +318,7 @@ function jrStatus(){
   const t=document.getElementById('jrTime').value||'21:00';
   if(on){el.innerHTML='<span style="color:var(--gold)">🌙 On — you\'ll get a nudge at <b>'+jrFmt12(t)+'</b> each night.</span>'+(pushSub?'':' <span style="color:var(--muted)">(background alerts will be enabled when you turn it on)</span>')}
   else{el.textContent='Off — no journal reminder will be sent.'}
+  const st=document.getElementById('jrStreakStats');if(st)st.innerHTML=jrStatsHtml();
 }
 async function saveJournalReminder(){
   const t=document.getElementById('jrTime').value||'21:00';
@@ -348,6 +352,30 @@ async function pushSetJournal(t){
   try{await fetch(PUSH_API+'notifSubscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})}catch(e){}
 }
 let jrTimer=null;
+function jrActivityDates(){const set=new Set();ciGetAll().forEach(function(c){if(c&&c.date)set.add(c.date)});jGetAll().forEach(function(e){if(e&&e.ts){const d=new Date(e.ts);set.add(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'))}});return set}
+function jrStreakInfo(){
+  const set=jrActivityDates();const total=set.size;
+  if(!total)return{streak:0,best:0,total:0,last:null};
+  const dates=Array.from(set).sort();
+  let best=1,run=1;
+  for(let i=1;i<dates.length;i++){const gap=Math.round((Date.parse(dates[i])-Date.parse(dates[i-1]))/86400000);if(gap===1){run++;if(run>best)best=run}else if(gap>1)run=1}
+  let streak=0;
+  if(set.has(ciDateStr(0))){streak=1;let off=0;while(set.has(ciDateStr(off-1))){streak++;off--}}
+  else if(set.has(ciDateStr(-1))){streak=1;let off=-1;while(set.has(ciDateStr(off-1))){streak++;off--}}
+  return{streak:streak,best:Math.max(best,streak),total:total,last:dates[dates.length-1]}
+}
+function jrStatsHtml(){
+  const si=jrStreakInfo();
+  if(!si.total)return '<span style="color:var(--muted)">No journal activity yet — your streak starts tonight 🌙</span>';
+  const last=si.last?new Date(si.last+'T00:00:00'):null;
+  const lastTxt=last?last.toLocaleDateString(undefined,{month:'short',day:'numeric'}):'';
+  return '<span style="color:var(--gold);font-weight:600">🔥 '+si.streak+'-night streak</span> <span style="color:var(--muted)">· best '+si.best+' · '+si.total+' night'+(si.total>1?'s':'')+' journaled · last '+lastTxt+'</span>'
+}
+async function jrSyncServer(){
+  if(!pushSub)return;
+  try{await fetch(PUSH_API+'notifSubscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'journalEntry',subscription:pushSub.toJSON(),entryDate:ciDateStr(0)})})}catch(e){}
+}
+
 function scheduleJournalReminder(){
   if(jrTimer){clearTimeout(jrTimer);jrTimer=null}
   if(!('Notification' in window)||Notification.permission!=='granted')return;
@@ -382,6 +410,8 @@ function saveJournalEntry(){
   const now=Date.now();
   all.unshift({id:'j'+now,title:title,body:body,ts:now});
   Settings.setJSON('journal',all);
+  jrSyncServer();
+  jrStatus();
   document.getElementById('jTitle').value='';
   document.getElementById('jBody').value='';
   renderJournalEntries();
