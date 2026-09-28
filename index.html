@@ -316,7 +316,7 @@ function jrStatus(){
   const el=document.getElementById('jrStatus');if(!el)return;
   const on=document.getElementById('jrToggle').checked;
   const t=document.getElementById('jrTime').value||'21:00';
-  if(on){el.innerHTML='<span style="color:var(--gold)">🌙 On — you\'ll get a nudge at <b>'+jrFmt12(t)+'</b> each night.</span>'+(pushSub?'':' <span style="color:var(--muted)">(background alerts will be enabled when you turn it on)</span>')}
+  if(on){el.innerHTML='<span style="color:var(--gold)">🌙 On — you\'ll get a nudge at <b>'+jrFmt12(t)+'</b> each night.</span>'+(pushSub?'':' <span style="color:var(--muted)">(background alerts will be enabled when you turn it on)</span>')+(Settings.get('journalLastFired')===ciDateStr(0)?' <span style="color:var(--emerald)">· ✓ fired tonight</span>':'')}
   else{el.textContent='Off — no journal reminder will be sent.'}
   const st=document.getElementById('jrStreakStats');if(st)st.innerHTML=jrStatsHtml();
 }
@@ -376,14 +376,32 @@ async function jrSyncServer(){
   try{await fetch(PUSH_API+'notifSubscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'journalEntry',subscription:pushSub.toJSON(),entryDate:ciDateStr(0)})})}catch(e){}
 }
 
+function jrFireReminder(){
+  const body='Take a moment to write tonight\'s journal entry.';
+  if(('Notification' in window)&&Notification.permission==='granted'){
+    try{
+      const n=new Notification('📓 Journal Reminder',{body:body,tag:'journal-reminder'});
+      n.onclick=function(){window.focus();showTab('journal',document.querySelector('.tab-btn[onclick*="showTab(\'journal\'"]'));showJournalPane('reminder',null);n.close()};
+      return;
+    }catch(e){}
+  }
+  showToast('📓 Journal time — '+body);
+}
 function scheduleJournalReminder(){
-  if(jrTimer){clearTimeout(jrTimer);jrTimer=null}
-  if(!('Notification' in window)||Notification.permission!=='granted')return;
+  if(jrTimer){clearInterval(jrTimer);jrTimer=null}
   if(Settings.get('journalRemOn')!=='1')return;
-  const[h,m]=(Settings.get('journalRemTime')||'21:00').split(':').map(Number);
-  const now=new Date();const target=new Date(now);target.setHours(h,m,0,0);
-  if(target<=now)target.setDate(target.getDate()+1);
-  jrTimer=setTimeout(()=>{const n=new Notification('📓 Journal Reminder',{body:'Take a moment to write tonight\'s journal entry.',tag:'journal-reminder'});n.onclick=function(){window.focus();showTab('journal',document.querySelector('.tab-btn[onclick*="showTab(\'journal\'"]'));showJournalPane('reminder',null);n.close()};scheduleJournalReminder()},target-now);
+  jrTimer=setInterval(function(){
+    if(Settings.get('journalRemOn')!=='1')return;
+    const now=new Date();
+    const cur=String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+    const want=Settings.get('journalRemTime')||'21:00';
+    const today=ciDateStr(0);
+    if(cur===want&&Settings.get('journalLastFired')!==today){
+      Settings.set('journalLastFired',today);
+      jrFireReminder();
+      jrStatus();
+    }
+  },5000);
 }
 function jGetAll(){return Settings.getJSON('journal',[]);}
 function saveJournalEntry(){
