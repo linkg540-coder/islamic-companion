@@ -8,7 +8,9 @@ self.addEventListener('push', e => {
     body: d.body || 'It is time for prayer.',
     tag: d.tag || 'prayer',
     data: { url: d.url || '/' },
-    requireInteraction: false
+    vibrate: [180, 90, 180],
+    silent: false,
+    requireInteraction: !!d.sticky
   }));
 });
 self.addEventListener('notificationclick', e => {
