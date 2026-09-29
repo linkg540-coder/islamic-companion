@@ -377,15 +377,24 @@ async function jrSyncServer(){
 }
 
 function jrFireReminder(){
+  const title='📓 Journal Reminder';
   const body='Take a moment to write tonight\'s journal entry.';
-  if(('Notification' in window)&&Notification.permission==='granted'){
-    try{
-      const n=new Notification('📓 Journal Reminder',{body:body,tag:'journal-reminder'});
-      n.onclick=function(){window.focus();showTab('journal',document.querySelector('.tab-btn[onclick*="showTab(\'journal\'"]'));showJournalPane('reminder',null);n.close()};
-      return;
-    }catch(e){}
-  }
-  showToast('📓 Journal time — '+body);
+  const url=location.href.split('#')[0]+'#journal-reminder';
+  // Prefer the service worker: iOS home-screen apps don't support in-page
+  // notifications and suppress push banners while the app is in the foreground.
+  getSwRegistration().then(function(reg){
+    if(!reg)throw new Error('no service worker');
+    return reg.showNotification(title,{body:body,tag:'journal-reminder',data:{url:url}});
+  }).catch(function(){
+    if(('Notification' in window)&&Notification.permission==='granted'){
+      try{
+        const n=new Notification(title,{body:body,tag:'journal-reminder'});
+        n.onclick=function(){window.focus();showTab('journal',document.querySelector('.tab-btn[onclick*="showTab(\'journal\'"]'));showJournalPane('reminder',null);n.close()};
+        return;
+      }catch(e){}
+    }
+    showToast(title+' — '+body);
+  });
 }
 function scheduleJournalReminder(){
   if(jrTimer){clearInterval(jrTimer);jrTimer=null}
