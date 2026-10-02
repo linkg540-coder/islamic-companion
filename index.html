@@ -167,20 +167,23 @@ async function toggleNotifications(){
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
   const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 
+  let existingSub = null;
   if (Notification.permission === 'granted'){
-    if (!confirm('Disable prayer notifications on this device?')) return;
     try{
-      if (pushSub){
-        const sub = pushSub; pushSub = null;
-        await sub.unsubscribe();
-        await fetch(PUSH_API + 'notifSubscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'unsubscribe', subscription: { endpoint: sub.endpoint } }) });
-      }
+      const reg0 = await getSwRegistration();
+      existingSub = reg0 ? await reg0.pushManager.getSubscription() : null;
     }catch(e){}
-    bell.classList.remove('active');
-    bell.title = 'Click to enable prayer notifications';
-    showToast('🔕 Prayer notifications off');
-    updateSalahTracker();
-    return;
+    if (existingSub){
+      if (!confirm('Disable prayer notifications on this device?')) return;
+      pushSub = null;
+      try{ await existingSub.unsubscribe(); }catch(e){}
+      try{ await fetch(PUSH_API + 'notifSubscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'unsubscribe', subscription: { endpoint: existingSub.endpoint } }) }); }catch(e){}
+      bell.classList.remove('active');
+      bell.title = 'Click to enable prayer notifications';
+      showToast('🔕 Prayer notifications off');
+      updateSalahTracker();
+      return;
+    }
   }
   if (Notification.permission === 'denied'){ showToast('Please allow notifications in your browser or phone settings');return;}
   const perm = await Notification.requestPermission();
