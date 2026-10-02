@@ -157,11 +157,15 @@ async function syncPushSubscription(isNew) {
   try {
     const res = await fetch(PUSH_API + 'notifSubscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     const data = await res.json();
+    icNotifDbg('server-sync', 'status=' + res.status + ' ok=' + !!data.ok + (data.error ? ' err=' + data.error : ''));
     if (data.ok && isNew && !body.lat) showToast('📍 Open the Prayer Times tab once so alerts match your city.');
-  } catch (e) {}
+  } catch (e) { icNotifDbg('server-sync-error', e && e.message); }
 }
 
+function icNotifDbg(step, detail){ try{ fetch(PUSH_API + 'notifDebug', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ step: step, detail: String(detail == null ? '' : detail).slice(0, 380), device: (navigator.userAgent || '').slice(0, 190) }) }).catch(function(){}); }catch(e){} }
+
 async function toggleNotifications(){
+  icNotifDbg('tap', 'perm=' + (('Notification' in window) ? Notification.permission : 'unsupported') + ' sw=' + ('serviceWorker' in navigator) + ' push=' + ('PushManager' in window));
   if (!('Notification' in window)){ showToast('Notifications not supported on this device');return;}
   const bell = document.getElementById('notifBell');
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
@@ -172,7 +176,8 @@ async function toggleNotifications(){
     try{
       const reg0 = await getSwRegistration();
       existingSub = reg0 ? await reg0.pushManager.getSubscription() : null;
-    }catch(e){}
+      icNotifDbg('existing-check', 'reg=' + (reg0 ? 'ok' : 'null') + ' sub=' + (existingSub ? 'present' : 'none'));
+    }catch(e){ icNotifDbg('existing-check-error', e && e.message); }
     if (existingSub){
       if (!confirm('Disable prayer notifications on this device?')) return;
       pushSub = null;
@@ -188,6 +193,7 @@ async function toggleNotifications(){
   if (Notification.permission === 'denied'){ showToast('Please allow notifications in your browser or phone settings');return;}
   const perm = await Notification.requestPermission();
   notifPermission = perm;
+  icNotifDbg('permission', 'result=' + perm);
   if (perm !== 'granted'){ showToast('Notifications not enabled');return;}
   bell.classList.add('active');
   if (isIOS && !standalone) showToast('📱 On iPhone/iPad: tap Share → Add to Home Screen first — alerts then work when the app is closed.');
@@ -195,13 +201,16 @@ async function toggleNotifications(){
     const reg = await getSwRegistration();
     if (reg){
       try { const oldSub = await reg.pushManager.getSubscription(); if (oldSub) await oldSub.unsubscribe(); } catch(e){}
+      icNotifDbg('sw-reg', 'scope=' + reg.scope + ' state=' + (reg.installing ? 'installing' : reg.waiting ? 'waiting' : 'active'));
       pushSub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToUint8Array(PUSH_VAPID_KEY) });
+      icNotifDbg('subscribe-ok', pushSub.endpoint.slice(0, 120));
       await syncPushSubscription(true);
       showToast('🔔 Prayer alerts on! You will be alerted at each prayer time, even when the app is closed.');
     } else {
+      icNotifDbg('sw-reg', 'null — no service worker available on this device');
       showToast('🔔 Alerts enabled (this browser only supports in-app alerts).');
     }
-  }catch(e){ showToast('⚠️ Background alerts unavailable — in-app alerts still work.');}
+  }catch(e){ icNotifDbg('subscribe-error', e && e.message); showToast('⚠️ Background alerts unavailable — in-app alerts still work.');}
   scheduleNotifications();
   updateSalahTracker();
 }
