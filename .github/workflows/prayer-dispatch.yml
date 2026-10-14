@@ -1,0 +1,41 @@
+name: Prayer Notification Dispatcher
+
+# Sends Islamic Companion prayer/journal push notifications by calling the
+# icNotifDispatch backend function. Runs as a fine-grained loop so due events
+# fire close to their exact time. Fully idempotent (the backend keeps a
+# per-prayer sent log), so overlapping runs are safe. Does NOT depend on any
+# Base44 workflow credits.
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Dispatch due prayer notifications
+        run: |
+          API="https://solene-11f8ed2a.base44.app/functions/icNotifDispatch"
+          END=$((SECONDS+270))
+          while [ $SECONDS -lt $END ]; do
+            REM=$((END-SECONDS))
+            # catch up: fire anything due in the last 15 min (idempotent)
+            curl -s -m 30 -X POST "$API" -H 'Content-Type: application/json' \
+              -d '{"mode":"send"}'; echo
+            # how long until the next due event?
+            PEEK=$(curl -s -m 30 -X POST "$API" -H 'Content-Type: application/json' \
+              -d '{"mode":"peek"}')
+            SEC=$(printf '%s' "$PEEK" | grep -o '"seconds":[0-9]*' | cut -d: -f2)
+            [ -z "$SEC" ] && SEC=60
+            echo "peek: $PEEK"
+            # next event lands after this job's window: let the next run handle it
+            if [ "$SEC" -ge "$REM" ]; then echo "window done"; break; fi
+            # far out: poll again in 90s; close: sleep to just past due for precise firing
+            if [ "$SEC" -gt 90 ]; then SEC=90; fi
+            sleep $((SEC+1))
+          done
