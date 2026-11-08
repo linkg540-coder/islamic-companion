@@ -1,10 +1,15 @@
 name: Prayer Notification Dispatcher
 
 # Sends Islamic Companion prayer/journal push notifications by calling the
-# icNotifDispatch backend function. Runs as a fine-grained loop so due events
-# fire close to their exact time. Fully idempotent (the backend keeps a
-# per-prayer sent log), so overlapping runs are safe. Does NOT depend on any
-# Base44 workflow credits.
+# icNotifDispatch backend function.
+#
+# WHY LONG RUNS: GitHub heavily throttles */5 cron on free public repos
+# (observed: starts only every 3-8 hours). A short run therefore leaves most
+# prayer times completely uncovered. Instead each run holds a long window
+# (~5h45m, under the 6h job cap) and sleeps to each due event inside it, so
+# coverage is continuous regardless of how often cron actually fires.
+# Fully idempotent (the backend keeps a per-prayer sent log), so overlapping
+# or repeated sends are safe. Does NOT depend on any Base44 workflow credits.
 
 on:
   schedule:
@@ -12,30 +17,41 @@ on:
   workflow_dispatch:
 
 permissions: {}
+concurrency:
+  group: prayer-dispatch
+  cancel-in-progress: false
 
 jobs:
   dispatch:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 355
     steps:
       - name: Dispatch due prayer notifications
         run: |
           API="https://solene-11f8ed2a.base44.app/functions/icNotifDispatch"
-          END=$((SECONDS+270))
+          # ~5h45m of continuous coverage per run, under the 6h runner cap
+          END=$((SECONDS+20700))
           while [ $SECONDS -lt $END ]; do
             REM=$((END-SECONDS))
-            # catch up: fire anything due in the last 15 min (idempotent)
+            # catch up: fire anything due in the last hour (idempotent)
             curl -s -m 30 -X POST "$API" -H 'Content-Type: application/json' \
-              -d '{"mode":"send"}'; echo
+              -d '{"mode":"send"}' > /dev/null
             # how long until the next due event?
             PEEK=$(curl -s -m 30 -X POST "$API" -H 'Content-Type: application/json' \
               -d '{"mode":"peek"}')
             SEC=$(printf '%s' "$PEEK" | grep -o '"seconds":[0-9]*' | cut -d: -f2)
             [ -z "$SEC" ] && SEC=60
-            echo "peek: $PEEK"
-            # next event lands after this job's window: let the next run handle it
-            if [ "$SEC" -ge "$REM" ]; then echo "window done"; break; fi
-            # far out: poll again in 90s; close: sleep to just past due for precise firing
-            if [ "$SEC" -gt 90 ]; then SEC=90; fi
-            sleep $((SEC+1))
+            echo "$(date -u +%H:%M:%S)Z peek=$PEEK rem=${REM}s"
+            # close: sleep to just past due for precise firing.
+            # far: re-poll every 10 min, keep the window alive (never exit early).
+            if [ "$SEC" -lt 600 ]; then
+              SLEEP=$((SEC+1))
+            else
+              SLEEP=600
+            fi
+            [ "$SLEEP" -gt "$REM" ] && SLEEP=$REM
+            sleep $SLEEP
           done
+          # final flush before the runner goes away
+          curl -s -m 30 -X POST "$API" -H 'Content-Type: application/json' \
+            -d '{"mode":"send"}'; echo
