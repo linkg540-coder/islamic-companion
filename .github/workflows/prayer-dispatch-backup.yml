@@ -1,0 +1,43 @@
+name: Prayer Dispatcher Backup Chain
+
+# Second, independent dispatcher chain.
+# GitHub throttles */5 cron hard on free public repos, which is how a single
+# chain ends up with 1-2h holes after its 5h45m window expires. This chain runs
+# the same long-window loop on a different cron offset and its own concurrency
+# group, so if the primary chain is late to start, this one still covers the
+# prayer time. Everything is idempotent (per-prayer sent log in the backend).
+
+on:
+  schedule:
+    - cron: '12,42 * * * *'
+  workflow_dispatch:
+
+permissions: {}
+concurrency:
+  group: prayer-dispatch-backup
+  cancel-in-progress: false
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    steps:
+      - name: Dispatch due prayer notifications (backup)
+        run: |
+          API="https://solene-11f8ed2a.base44.app/functions/icNotifDispatch"
+          END=$((SECONDS+20700))
+          while [ $SECONDS -lt $END ]; do
+            REM=$((END-SECONDS))
+            curl -s -m 30 -X POST "$API" -H 'Content-Type: application/json' \
+              -d '{"mode":"send"}' > /dev/null
+            PEEK=$(curl -s -m 30 -X POST "$API" -H 'Content-Type: application/json' \
+              -d '{"mode":"peek"}')
+            SEC=$(printf '%s' "$PEEK" | grep -o '"seconds":[0-9]*' | cut -d: -f2)
+            [ -z "$SEC" ] && SEC=60
+            echo "$(date -u +%H:%M:%S)Z peek=$PEEK rem=${REM}s"
+            if [ "$SEC" -lt 600 ]; then SLEEP=$((SEC+1)); else SLEEP=600; fi
+            [ "$SLEEP" -gt "$REM" ] && SLEEP=$REM
+            sleep $SLEEP
+          done
+          curl -s -m 30 -X POST "$API" -H 'Content-Type: application/json' \
+            -d '{"mode":"send"}'; echo
