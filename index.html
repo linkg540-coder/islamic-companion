@@ -813,6 +813,7 @@ function runInit(){
   loadDailyVerse();
   loadSettings();
   populateLangSelector();
+  try { paRender(); } catch (e) {}
   
   // Phase 2: Render content (deferred to next frame)
   requestAnimationFrame(()=>{
