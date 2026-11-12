@@ -149,6 +149,15 @@ async function getSwRegistration() {
   return null;
 }
 
+function icDeviceId(){
+  var d = null;
+  try { d = Settings.get('deviceId'); } catch (e) {}
+  if (!d || String(d).length < 8){
+    d = 'dev_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+    try { Settings.set('deviceId', d); } catch (e) {}
+  }
+  return String(d);
+}
 async function syncPushSubscription(isNew) {
   if (!pushSub) return;
   const body = {
@@ -162,7 +171,8 @@ async function syncPushSubscription(isNew) {
     school: (document.getElementById('asrSchool') || {}).value || '0',
     journalTime: Settings.get('journalRemOn') === '1' ? (Settings.get('journalRemTime') || '21:00') : '',
     journalEnabled: Settings.get('journalRemOn') === '1' ? '1' : '0',
-    muted: paMuted().join(',')
+    muted: paMuted().join(','),
+    deviceId: icDeviceId()
   };
   try {
     const res = await fetch(PUSH_API + 'icNotifSubscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
