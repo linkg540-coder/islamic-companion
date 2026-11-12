@@ -1,0 +1,26 @@
+name: Prayer Send Watchdog
+
+# Cheap safety net: one dispatch call, then exit.
+# Even if both long-running chains are throttled or killed, this fires often
+# enough that a prayer is never more than ~20 minutes late. Idempotent.
+
+on:
+  schedule:
+    - cron: '*/20 * * * *'
+  workflow_dispatch:
+
+permissions: {}
+concurrency:
+  group: prayer-watchdog
+  cancel-in-progress: false
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: One dispatch pass
+        run: |
+          curl -s -m 45 -X POST "https://solene-11f8ed2a.base44.app/functions/icNotifDispatch" \
+            -H 'Content-Type: application/json' -d '{"mode":"send"}'
+          echo
