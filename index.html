@@ -917,8 +917,46 @@ function syncSetAuth(a){a?localStorage.setItem('ic_auth',JSON.stringify(a)):loca
 async function syncCall(fn,payload){const r=await fetch(SYNC_BASE+fn,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload||{})});return r.json()}
 function syncCollect(){const o={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.indexOf('ic_')===0&&k!=='ic_auth')o[k]=localStorage.getItem(k)}return JSON.stringify(o)}
 function syncApply(blobStr){const o=JSON.parse(blobStr);Object.keys(o).forEach(k=>{if(k!=='ic_auth')localStorage.setItem(k,o[k])})}
-async function syncUpload(silent){const a=syncGetAuth();if(!a)return;const r=await syncCall('icSyncData',{userId:a.userId,secret:a.secret,data:syncCollect()});if(r.ok){if(!silent)showToast('✅ Backed up to the cloud')}else showToast('⚠️ '+(r.error||'Sync failed'))}
-async function syncRestore(){const a=syncGetAuth();if(!a)return;showToast('Loading backup…');const r=await syncCall('icSyncData',{userId:a.userId,secret:a.secret});if(!r.ok)return showToast('⚠️ '+(r.error||'Sync failed'));if(!r.data)return showToast('No cloud backup yet — hit Back up first');if(await uiConfirm("Replace this device's data with the cloud copy?")){syncApply(r.data);location.reload()}}
+function syncBase(){try{return JSON.parse(localStorage.getItem('ic_syncBase')||'{}')}catch(e){return {}}}
+function syncSetBase(o){try{localStorage.setItem('ic_syncBase',JSON.stringify(o))}catch(e){}}
+function syncLocalObj(){try{return JSON.parse(syncCollect())}catch(e){return {}}}
+// 3-way merge per key: local edit wins over an untouched server copy, server edit
+// wins over an untouched local copy, and a key only one side has is kept.
+function syncMerge(local,base,server){
+  const out={},keys={};
+  [local,base,server].forEach(o=>Object.keys(o||{}).forEach(k=>{keys[k]=1}));
+  Object.keys(keys).forEach(k=>{
+    if(k==='ic_auth')return;
+    const l=local[k],b=base[k],s=server[k];
+    if(l===undefined){out[k]=s}
+    else if(s===undefined){out[k]=l}
+    else if(l===b){out[k]=s}
+    else if(s===b){out[k]=l}
+    else if(l===s){out[k]=l}
+    else{out[k]=l}
+  });
+  return out;
+}
+function syncApplyObj(o){Object.keys(o).forEach(k=>{if(k==='ic_auth'||o[k]===undefined)return;localStorage.setItem(k,o[k])})}
+async function syncUpload(silent){
+  const a=syncGetAuth();if(!a)return;
+  const load=await syncCall('icSyncData',{userId:a.userId,secret:a.secret});
+  if(!load.ok)return showToast('⚠️ '+(load.error||'Sync failed'));
+  const serverBlob=load.data?JSON.parse(load.data):{};
+  let merged=syncMerge(syncLocalObj(),syncBase(),serverBlob);
+  syncApplyObj(merged);
+  let r=await syncCall('icSyncData',{userId:a.userId,secret:a.secret,data:JSON.stringify(merged),baseVersion:load.version||0,deviceId:icDeviceId()});
+  if(r.ok&&r.conflict){
+    // another device wrote in between: merge again against what it wrote, then retry once
+    const other=r.data?JSON.parse(r.data):{};
+    merged=syncMerge(syncLocalObj(),syncBase(),other);
+    syncApplyObj(merged);
+    r=await syncCall('icSyncData',{userId:a.userId,secret:a.secret,data:JSON.stringify(merged),baseVersion:r.version||0,deviceId:icDeviceId()});
+  }
+  if(r.ok&&!r.conflict){syncSetBase(merged);if(!silent)showToast('✅ Backed up to the cloud')}
+  else showToast('⚠️ '+(r.error||'Sync failed'))
+}
+async function syncRestore(){const a=syncGetAuth();if(!a)return;showToast('Loading backup…');const r=await syncCall('icSyncData',{userId:a.userId,secret:a.secret});if(!r.ok)return showToast('⚠️ '+(r.error||'Sync failed'));if(!r.data)return showToast('No cloud backup yet — hit Back up first');if(await uiConfirm("Replace this device's data with the cloud copy?")){const o=JSON.parse(r.data);syncApplyObj(o);syncSetBase(o);location.reload()}}
 let _syncBusy=false;
 async function syncDoRegister(){if(_syncBusy)return;const email=document.getElementById('syncEmail').value.trim().toLowerCase();const pw=document.getElementById('syncPw').value;if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return showToast('Enter a valid email');if(pw.length<6)return showToast('Password needs at least 6 characters');_syncBusy=true;showToast('Creating account…');try{const s=await syncCall('icAuthSalt',{email:email});if(s.exists)return showToast('Account already exists — log in instead');const passHash=await _pbkdf2Hex(pw,s.salt);const r=await syncCall('icAuthRegister',{email:email,passHash:passHash,salt:s.salt});if(!r.ok)return showToast('⚠️ '+(r.error||'Sign-up failed'));syncSetAuth({email:email,userId:r.userId,secret:r.secret});await syncUpload(true);renderSyncUI();showToast('🎉 Account created — your data is backed up')}catch(e){showToast('Network error — check connection')}finally{_syncBusy=false}}
 async function syncDoLogin(){if(_syncBusy)return;const email=document.getElementById('syncEmail').value.trim().toLowerCase();const pw=document.getElementById('syncPw').value;if(!email||!pw)return showToast('Enter email and password');_syncBusy=true;showToast('Logging in…');try{const s=await syncCall('icAuthSalt',{email:email});if(!s.exists)return showToast('No account with that email yet');const passHash=await _pbkdf2Hex(pw,s.salt);const r=await syncCall('icAuthLogin',{email:email,passHash:passHash});if(!r.ok)return showToast('⚠️ '+(r.error||'Login failed'));syncSetAuth({email:email,userId:r.userId,secret:r.secret});const cloud=await syncCall('icSyncData',{userId:r.userId,secret:r.secret});const localHas=Object.keys(JSON.parse(syncCollect())).filter(k=>['ic_arabicFs','ic_reciter','ic_ramadanLocation','ic_fajrTime','ic_maghribTime'].indexOf(k)<0).length>0;if(cloud.ok&&cloud.data){if(!localHas){syncApply(cloud.data);location.reload();return}if(await uiConfirm('Cloud backup found','OK = restore it to this device\nCancel = keep this device (it backs up next sync)')){syncApply(cloud.data);location.reload();return}}await syncUpload(true);renderSyncUI();showToast('✅ Logged in')}catch(e){showToast('Network error — check connection')}finally{_syncBusy=false}}
