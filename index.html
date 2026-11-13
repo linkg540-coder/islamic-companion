@@ -267,10 +267,13 @@ function paIsOn(name){ return paMuted().indexOf(name) === -1; }
 function adhanSound(){var v='off';try{v=String(Settings.get('adhanSound')||'off')}catch(e){}return ['off','short','full'].indexOf(v)<0?'off':v;}
 function adhanSyncUI(){var s=document.getElementById('adhanSoundSel');if(s)s.value=adhanSound();}
 function adhanSetSound(v){v=(['off','short','full'].indexOf(v)<0)?'off':v;Settings.set('adhanSound',v);adhanSyncUI();try{adhanSchedule()}catch(e){}showToast(v==='off'?'\ud83d\udd07 In-app adhan off':(v==='short'?'\ud83c\udfa7 In-app adhan: short':'\ud83c\udfa7 In-app adhan: full'));}
-var _adhanAudio=null,_adhanStop=null,_adhanTimers=[];
+var _adhanAudio=null,_adhanStop=null,_adhanTimers=[],_adhanUnlocked=false,_adhanArmed=false;
+function adhanWarm(){try{if(!('caches' in window))return;fetch('audio/adhan.mp3',{cache:'force-cache'}).then(function(r){return r&&r.blob()}).catch(function(){})}catch(e){}}
+function adhanUnlock(){if(_adhanUnlocked)return;try{if(!_adhanAudio){_adhanAudio=new Audio('audio/adhan.mp3');_adhanAudio.preload='auto';}_adhanAudio.muted=true;var p=_adhanAudio.play();if(p&&p.then){p.then(function(){try{_adhanAudio.pause();_adhanAudio.currentTime=0;_adhanAudio.muted=false;_adhanUnlocked=true;}catch(e){}}).catch(function(){try{_adhanAudio.muted=false;}catch(e){}});}else{_adhanAudio.muted=false;_adhanUnlocked=true;}}catch(e){}}
+function adhanArm(){if(_adhanArmed)return;_adhanArmed=true;try{document.addEventListener('pointerdown',adhanUnlock,{passive:true});document.addEventListener('keydown',adhanUnlock,{passive:true});}catch(e){}adhanWarm();}
 function adhanPlay(){var mode=adhanSound();if(mode==='off')return false;try{if(!_adhanAudio){_adhanAudio=new Audio('audio/adhan.mp3');_adhanAudio.preload='auto';}_adhanAudio.pause();_adhanAudio.currentTime=0;_adhanAudio.volume=0.9;var p=_adhanAudio.play();if(p&&p.catch)p.catch(function(){});if(_adhanStop){clearTimeout(_adhanStop);_adhanStop=null;}if(mode==='short'){_adhanStop=setTimeout(function(){try{_adhanAudio.pause()}catch(e){}},20000);}return true;}catch(e){return false;}}
 function adhanTest(){if(adhanSound()==='off'){adhanSetSound('short');}adhanPlay();}
-function adhanSchedule(){try{_adhanTimers.forEach(clearTimeout)}catch(e){}_adhanTimers=[];if(adhanSound()==='off')return;var now=Date.now();(window._prayerSchedule||[]).forEach(function(p){if(!paIsOn(p.name))return;var t=new Date(p.timestamp).getTime();if(!isFinite(t))return;var d=t-now;if(d>0&&d<86400000){_adhanTimers.push(setTimeout(function(){if(paIsOn(p.name))adhanPlay();},d));}});}
+function adhanSchedule(){try{_adhanTimers.forEach(clearTimeout)}catch(e){}_adhanTimers=[];if(adhanSound()==='off')return;try{adhanArm()}catch(e){}var now=Date.now();(window._prayerSchedule||[]).forEach(function(p){if(!paIsOn(p.name))return;var t=new Date(p.timestamp).getTime();if(!isFinite(t))return;var d=t-now;if(d>0&&d<86400000){_adhanTimers.push(setTimeout(function(){if(paIsOn(p.name))adhanPlay();},d));}});}
 function paRender(){
   paSyncLeadUI();
   adhanSyncUI();
