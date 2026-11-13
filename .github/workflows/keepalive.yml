@@ -1,0 +1,32 @@
+name: Keep Schedules Alive
+
+# GitHub disables scheduled workflows after 60 days without repository activity.
+# The prayer chains are the only thing delivering adhan pushes, so this commits a
+# timestamp once a month to keep every schedule in this repo enabled.
+
+on:
+  schedule:
+    - cron: '17 6 1 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: keepalive
+  cancel-in-progress: false
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Commit timestamp
+        run: |
+          date -u +"%Y-%m-%dT%H:%M:%SZ" > .keepalive
+          git config user.name "keepalive-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add .keepalive
+          git commit -m "keepalive: keep prayer schedules enabled" || echo "no change today"
+          git push
