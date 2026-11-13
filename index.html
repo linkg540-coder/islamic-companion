@@ -613,7 +613,7 @@ function icRenderCachedTimings(reason){
   if (!s || !s.data) return false;
   window._icTimingsFromCache = true;
   try{
-    renderPrayerTimes(s.data, (s.label || 'Saved location') + ' · saved', s.tz);
+    renderPrayerTimes(s.data, (s.label || 'Saved location'), s.tz);
     const tzEl = document.getElementById('tzInfo');
     if (tzEl) tzEl.innerHTML = '📴 ' + (reason || 'Offline') + ' — showing saved times from ' + new Date(s.at).toLocaleString();
   }catch(e){ window._icTimingsFromCache = false; return false; }
