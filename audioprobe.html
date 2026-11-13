@@ -1,24 +1,23 @@
 <!DOCTYPE html><html><body style="background:#111;color:#0f0;font-family:monospace;padding:20px">
-<button id="b" style="font-size:18px;padding:10px 18px">play adhan mp3</button>
-<pre id="o">idle</pre>
+<pre id="o">checking…</pre>
 <script>
 const out = [];
 const log = s => { out.push(s); document.getElementById('o').textContent = out.join('\n'); };
-document.getElementById('b').onclick = async () => {
-  const a = new Audio('audio/adhan.mp3');
-  a.preload = 'auto'; a.volume = 0.9;
+(async () => {
   try {
-    await a.play();
-    log('play() resolved');
-  } catch (e) { log('play() REJECTED: ' + e.name + ' — ' + e.message); }
-  setTimeout(async () => {
-    log('currentTime=' + a.currentTime.toFixed(2) + ' paused=' + a.paused + ' duration=' + (isFinite(a.duration) ? a.duration.toFixed(1) : a.duration) + ' readyState=' + a.readyState);
-    try {
-      const r = await fetch('audio/adhan.mp3');
-      log('fetch status=' + r.status + ' bytes=' + (await r.clone().blob()).size);
-      const m = await caches.match('audio/adhan.mp3');
-      log('cache after fetch: ' + (m ? 'HIT ' + m.status : 'miss'));
-    } catch (e) { log('fetch ERR ' + e.message); }
-  }, 2500);
-};
+    const r = await fetch('audio/adhan.mp3', { cache: 'force-cache' });
+    const b = await r.blob();
+    log('fetch: ' + r.status + ' ' + b.size + ' bytes type=' + b.type);
+    const m = await caches.match('audio/adhan.mp3');
+    log('sw cache: ' + (m ? 'HIT ' + m.status : 'miss'));
+  } catch (e) { log('fetch ERR ' + e.message); }
+  const a = new Audio('audio/adhan.mp3');
+  a.preload = 'auto';
+  try {
+    const p = a.play();
+    log('play() promise returned');
+    p.then(() => log('play RESOLVED')).catch(e => log('play REJECTED ' + e.name));
+  } catch (e) { log('play THREW ' + e.message); }
+  setTimeout(() => log('currentTime=' + a.currentTime.toFixed(2) + ' paused=' + a.paused + ' dur=' + (isFinite(a.duration) ? a.duration.toFixed(1) : String(a.duration)) + ' ready=' + a.readyState), 3000);
+})();
 </script></body></html>
