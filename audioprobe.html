@@ -1,20 +1,24 @@
 <!DOCTYPE html><html><body style="background:#111;color:#0f0;font-family:monospace;padding:20px">
-<pre id="o">checking…</pre>
+<button id="b" style="font-size:18px;padding:10px 18px">play adhan mp3</button>
+<pre id="o">idle</pre>
 <script>
-(async () => {
-  const out = [];
+const out = [];
+const log = s => { out.push(s); document.getElementById('o').textContent = out.join('\n'); };
+document.getElementById('b').onclick = async () => {
+  const a = new Audio('audio/adhan.mp3');
+  a.preload = 'auto'; a.volume = 0.9;
   try {
-    const names = await caches.keys();
-    out.push('caches: ' + names.join(', '));
-    for (const n of names) {
-      const c = await caches.open(n);
-      const keys = await c.keys();
-      const hit = keys.filter(k => /adhan\.mp3/.test(k.url));
-      out.push(n + ': ' + keys.length + ' entries' + (hit.length ? '  ADHAN CACHED -> ' + hit[0].url : ''));
-    }
-    const m = await caches.match('audio/adhan.mp3');
-    out.push('match(audio/adhan.mp3): ' + (m ? 'HIT ' + m.status : 'miss'));
-  } catch (e) { out.push('ERR ' + e.message); }
-  document.getElementById('o').textContent = out.join('\n');
-})();
+    await a.play();
+    log('play() resolved');
+  } catch (e) { log('play() REJECTED: ' + e.name + ' — ' + e.message); }
+  setTimeout(async () => {
+    log('currentTime=' + a.currentTime.toFixed(2) + ' paused=' + a.paused + ' duration=' + (isFinite(a.duration) ? a.duration.toFixed(1) : a.duration) + ' readyState=' + a.readyState);
+    try {
+      const r = await fetch('audio/adhan.mp3');
+      log('fetch status=' + r.status + ' bytes=' + (await r.clone().blob()).size);
+      const m = await caches.match('audio/adhan.mp3');
+      log('cache after fetch: ' + (m ? 'HIT ' + m.status : 'miss'));
+    } catch (e) { log('fetch ERR ' + e.message); }
+  }, 2500);
+};
 </script></body></html>
