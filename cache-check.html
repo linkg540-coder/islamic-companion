@@ -45,6 +45,18 @@ const log = s => { out.textContent += '\n' + s; };
   await new Promise(r => setTimeout(r, 1500));
   const q = await caches.open('ic-v2-quran');
   log('quran cache after live calls: ' + (await q.keys()).length + ' entries');
+  // saved prayer times (the offline render source)
+  try {
+    const raw = localStorage.getItem('ic_lastTimings');
+    if (!raw) log('ic_lastTimings: MISSING');
+    else {
+      const s = JSON.parse(raw);
+      log('ic_lastTimings: ' + Math.round(raw.length / 1024) + 'KB | age ' + ((Date.now() - s.at) / 60000).toFixed(1) + ' min');
+      log('  label: ' + s.label + ' | tz: ' + s.tz);
+      log('  Fajr ' + (s.data && s.data.timings && s.data.timings.Fajr) + ' / Isha ' + (s.data && s.data.timings && s.data.timings.Isha) +
+          ' | hijri ' + (s.data && s.data.date && s.data.date.hijri ? s.data.date.hijri.day + ' ' + s.data.date.hijri.month.en : 'n/a'));
+    }
+  } catch (e) { log('ic_lastTimings error: ' + e.message); }
   log('DONE');
 })().catch(e => log('ERROR: ' + e.message));
 </script></body></html>
