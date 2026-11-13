@@ -45,6 +45,11 @@ const log = s => { out.textContent += '\n' + s; };
   await new Promise(r => setTimeout(r, 1500));
   const q = await caches.open('ic-v2-quran');
   log('quran cache after live calls: ' + (await q.keys()).length + ' entries');
+  // storage visibility test
+  log('ls keys: ' + localStorage.length + ' | ic_ keys: ' + Object.keys(localStorage).filter(k => k.indexOf('ic_') === 0).length);
+  log('  has ic_theme: ' + localStorage.getItem('ic_theme') + ' | has ic_deviceId: ' + (localStorage.getItem('ic_deviceId') ? 'yes' : 'no'));
+  try { localStorage.setItem('ic_probe_canary', String(Date.now())); log('  canary write: ok (' + localStorage.getItem('ic_probe_canary') + ')'); }
+  catch (e) { log('  canary write FAILED: ' + e.message); }
   // saved prayer times (the offline render source)
   try {
     const raw = localStorage.getItem('ic_lastTimings');
