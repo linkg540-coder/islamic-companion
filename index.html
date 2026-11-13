@@ -268,7 +268,28 @@ function paToggle(name, on){
   try { syncPushSubscription(); } catch (e) {}
   showToast(on ? ('🔔 ' + name + ' alerts on') : ('🔕 ' + name + ' alerts off'));
 }
-function scheduleNotifications(){ if (!checkNotifPermission()) return;try{syncPushSubscription()}catch(e){}scheduledNotifTimes.forEach(id => clearTimeout(id));scheduledNotifTimes = [];const now = new Date();window._prayerSchedule.forEach(p =>{ if(!paIsOn(p.name)) return; const prayerTime = new Date(p.timestamp);const delay = prayerTime - now;if (delay > 0 && delay < 86400000){ const id = setTimeout(() =>{ new Notification('🕌 ' + p.name + ' Prayer',{ body: 'It\'s time for ' + p.name + ' prayer. ' + p.time, icon: '🕌', tag: 'prayer-' + p.name, vibrate: [200, 100, 200] });}, delay);scheduledNotifTimes.push(id);}});}function showToast(msg, duration = 3500){ const existing = document.querySelector('.toast');if (existing) existing.remove();const toast = document.createElement('div');toast.className = 'toast';toast.textContent = msg;document.body.appendChild(toast);setTimeout(() => toast.remove(), duration);}let qiblaAutoLoaded = false;function showTab(tab, btn){ document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));document.getElementById('tab-' + tab).classList.add('active');if (btn) btn.classList.add('active');if(tab!=='qibla'&&liveCompassEnabled)stopLiveCompass();if(tab!=='mosques')stopMosqueCompassRAF();if (tab === 'qibla' && !qiblaAutoLoaded){ qiblaAutoLoaded = true;getQiblaByGPS();}if (tab === 'hadiths' && typeof renderHadiths === 'function') renderHadiths();if (tab === 'ramadan' && typeof initRamadan === 'function') initRamadan();if (tab === 'journal'){ if (typeof renderCheckins === 'function') renderCheckins();if (typeof renderJournalEntries === 'function') renderJournalEntries();}if (tab === 'mosques' && !window._mosquesLoaded && Settings.get('lastLat')){ window._mosquesLoaded = true;findMosques();}if (tab === 'mosques'){ renderFavorites();if (Settings.get('lastLat')) updateGpsStatus('offline',{ lat: parseFloat(Settings.get('lastLat')), lon: parseFloat(Settings.get('lastLon')) });}}// ===== JOURNAL / NOTEBOOKS =====
+function scheduleNotifications(){ if (!checkNotifPermission()) return;try{syncPushSubscription()}catch(e){}scheduledNotifTimes.forEach(id => clearTimeout(id));scheduledNotifTimes = [];const now = new Date();window._prayerSchedule.forEach(p =>{ if(!paIsOn(p.name)) return; const prayerTime = new Date(p.timestamp);const delay = prayerTime - now;if (delay > 0 && delay < 86400000){ const id = setTimeout(() =>{ new Notification('🕌 ' + p.name + ' Prayer',{ body: 'It\'s time for ' + p.name + ' prayer. ' + p.time, icon: '🕌', tag: 'prayer-' + p.name, vibrate: [200, 100, 200] });}, delay);scheduledNotifTimes.push(id);}});}function icOfflineInit(){
+  var chip = document.createElement('div');
+  chip.id = 'icOfflineChip';
+  chip.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:14px;z-index:60;display:none;padding:.45rem .8rem;border-radius:2rem;font-size:.78rem;background:rgba(20,20,35,.95);border:1px solid var(--gold);color:var(--text);box-shadow:0 4px 18px rgba(0,0,0,.45)';
+  document.body.appendChild(chip);
+  function show(text){ chip.textContent = text; chip.style.display = 'block'; }
+  function hide(){ chip.style.display = 'none'; }
+  window.addEventListener('offline', function(){ show('📴 Offline — saved surahs and prayer times still work'); });
+  window.addEventListener('online', function(){ show('✅ Back online'); setTimeout(hide, 2200); });
+  if (!navigator.onLine) show('📴 Offline — saved surahs and prayer times still work');
+  if (!('serviceWorker' in navigator)) return;
+  navigator.serviceWorker.addEventListener('message', function(e){
+    if (!e.data || e.data.type !== 'ic-cache-stats') return;
+    if (e.data.total > 1) show('💾 Offline ready · ' + e.data.total + ' files saved');
+    setTimeout(hide, 3200);
+  });
+  navigator.serviceWorker.ready.then(function(reg){
+    var target = reg.active || navigator.serviceWorker.controller;
+    if (target) target.postMessage({ type: 'ic-cache-stats' });
+  }).catch(function(){});
+}
+function showToast(msg, duration = 3500){ const existing = document.querySelector('.toast');if (existing) existing.remove();const toast = document.createElement('div');toast.className = 'toast';toast.textContent = msg;document.body.appendChild(toast);setTimeout(() => toast.remove(), duration);}let qiblaAutoLoaded = false;function showTab(tab, btn){ document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));document.getElementById('tab-' + tab).classList.add('active');if (btn) btn.classList.add('active');if(tab!=='qibla'&&liveCompassEnabled)stopLiveCompass();if(tab!=='mosques')stopMosqueCompassRAF();if (tab === 'qibla' && !qiblaAutoLoaded){ qiblaAutoLoaded = true;getQiblaByGPS();}if (tab === 'hadiths' && typeof renderHadiths === 'function') renderHadiths();if (tab === 'ramadan' && typeof initRamadan === 'function') initRamadan();if (tab === 'journal'){ if (typeof renderCheckins === 'function') renderCheckins();if (typeof renderJournalEntries === 'function') renderJournalEntries();}if (tab === 'mosques' && !window._mosquesLoaded && Settings.get('lastLat')){ window._mosquesLoaded = true;findMosques();}if (tab === 'mosques'){ renderFavorites();if (Settings.get('lastLat')) updateGpsStatus('offline',{ lat: parseFloat(Settings.get('lastLat')), lon: parseFloat(Settings.get('lastLon')) });}}// ===== JOURNAL / NOTEBOOKS =====
 function ciDateStr(offsetDays){const d=new Date();d.setDate(d.getDate()+(offsetDays||0));return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function ciGetAll(){return Settings.getJSON('checkins',[]);}
 function ciToday(){return ciGetAll().find(function(c){return c.date===ciDateStr(0)})||null;}
@@ -824,6 +845,7 @@ function runInit(){
   loadSettings();
   populateLangSelector();
   try { paRender(); } catch (e) {}
+  try { icOfflineInit(); } catch (e) {}
   
   // Phase 2: Render content (deferred to next frame)
   requestAnimationFrame(()=>{
