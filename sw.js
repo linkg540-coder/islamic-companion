@@ -55,8 +55,13 @@ self.addEventListener('fetch', e => {
     e.respondWith((async () => {
       try {
         const fresh = await fetch(req);
-        const c = await caches.open(SHELL);
-        c.put('./index.html', fresh.clone()).catch(() => {});
+        // only the app's own entry point may refresh the cached shell —
+        // caching every navigation here would overwrite it with whatever page
+        // happened to be opened (e.g. a probe or a redirect stub)
+        if (url.origin === location.origin && (url.pathname === '/' || url.pathname === '/index.html')) {
+          const c = await caches.open(SHELL);
+          c.put('./index.html', fresh.clone()).catch(() => {});
+        }
         return fresh;
       } catch (err) {
         const c = await caches.open(SHELL);
