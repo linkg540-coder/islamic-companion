@@ -1,43 +1,26 @@
 <!DOCTYPE html><html><head><meta charset="utf-8"><title>cache check</title></head>
 <body style="font-family:monospace;background:#121226;color:#eee;padding:20px">
-<h3>offline cache check v2</h3><pre id="out">working…</pre>
+<h3>offline cache report</h3><pre id="out">working…</pre>
 <script>
 const out = document.getElementById('out');
 const log = s => { out.textContent += '\n' + s; };
-async function stats(){ const n = await caches.keys(); const o = {}; for (const k of n) o[k] = (await (await caches.open(k)).keys()).length; return o; }
 (async () => {
   out.textContent = '';
   const reg = await navigator.serviceWorker.ready;
-  log('sw: ' + reg.active.state + ' | ' + reg.active.scriptURL.split('/').pop());
-  // wipe old caches so we test this version's install, then reload the SW
-  for (const n of await caches.keys()) await caches.delete(n);
-  await reg.unregister();
-  const reg2 = await navigator.serviceWorker.register('/sw.js');
-  await navigator.serviceWorker.ready;
-  await new Promise(r => setTimeout(r, 2500));
-  log('caches after install: ' + JSON.stringify(await stats()));
-  // poll: precache of a 650KB page can lag a moment on first install
+  log('origin: ' + location.origin);
+  log('sw: ' + reg.active.state + ' | ' + reg.active.scriptURL);
+  const names = await caches.keys();
+  const o = {};
+  for (const n of names) o[n] = (await (await caches.open(n)).keys()).length;
+  log('caches: ' + JSON.stringify(o));
   const shell = await caches.open('ic-v2-shell');
-  let idx = null;
-  for (let i = 0; i < 15; i++) {
-    idx = await shell.match('./index.html');
-    if (idx) break;
-    await new Promise(r => setTimeout(r, 1000));
-  }
-  const idxText = idx ? await idx.text() : '';
-  log('index.html cached: ' + !!idx + ' (' + idxText.length + ' chars)');
-  log('looks like the app: ' + (idxText.includes('Islamic Companion') && idxText.length > 500000));
-  const r = await fetch('https://api.alquran.cloud/v1/surah/112/quran-uthmani');
-  log('surah 112 fetch: ' + r.status);
-  await new Promise(res => setTimeout(res, 1500));
+  const idx = await shell.match('./index.html');
+  const t = idx ? await idx.text() : '';
+  log('shell index.html: ' + (idx ? t.length + ' chars, isApp=' + (t.includes('Islamic Companion') && t.length > 500000) : 'MISSING'));
   const q = await caches.open('ic-v2-quran');
-  const hit = await q.match('https://api.alquran.cloud/v1/surah/112/quran-uthmani');
-  log('surah 112 stored for offline: ' + !!hit);
-  if (hit) { const j = await hit.json(); log('  -> ' + j.data.englishName + ', ' + j.data.ayahs.length + ' ayahs'); }
-  const t2 = await fetch('https://api.aladhan.com/v1/timingsByCity?city=Middletown&country=US&method=2&school=0');
-  log('prayer times fetch: ' + t2.status);
-  await new Promise(res => setTimeout(res, 1500));
-  log('final caches: ' + JSON.stringify(await stats()));
+  const keys = (await q.keys()).map(r => r.url.replace('https://', '').slice(0, 60));
+  log('quran cache (' + keys.length + '):');
+  keys.slice(0, 6).forEach(k => log('   ' + k));
   log('DONE');
 })().catch(e => log('ERROR: ' + e.message));
 </script></body></html>
