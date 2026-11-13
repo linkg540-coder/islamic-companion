@@ -15,9 +15,15 @@ async function stats(){ const n = await caches.keys(); const o = {}; for (const 
   const reg2 = await navigator.serviceWorker.register('/sw.js');
   await navigator.serviceWorker.ready;
   await new Promise(r => setTimeout(r, 2500));
-  log('caches after fresh install: ' + JSON.stringify(await stats()));
+  log('caches after install: ' + JSON.stringify(await stats()));
+  // poll: precache of a 650KB page can lag a moment on first install
   const shell = await caches.open('ic-v2-shell');
-  const idx = await shell.match('./index.html');
+  let idx = null;
+  for (let i = 0; i < 15; i++) {
+    idx = await shell.match('./index.html');
+    if (idx) break;
+    await new Promise(r => setTimeout(r, 1000));
+  }
   const idxText = idx ? await idx.text() : '';
   log('index.html cached: ' + !!idx + ' (' + idxText.length + ' chars)');
   log('looks like the app: ' + (idxText.includes('Islamic Companion') && idxText.length > 500000));
