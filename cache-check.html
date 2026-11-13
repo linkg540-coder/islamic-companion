@@ -18,8 +18,9 @@ async function stats(){ const n = await caches.keys(); const o = {}; for (const 
   log('caches after fresh install: ' + JSON.stringify(await stats()));
   const shell = await caches.open('ic-v2-shell');
   const idx = await shell.match('./index.html');
-  log('index.html cached: ' + !!idx + (idx ? ' (' + (await idx.text()).length + ' bytes)' : ''));
-  if (idx) { const t = await idx.text(); log('looks like the app: ' + (t.includes('Islamic Companion') && t.length > 500000)); }
+  const idxText = idx ? await idx.text() : '';
+  log('index.html cached: ' + !!idx + ' (' + idxText.length + ' chars)');
+  log('looks like the app: ' + (idxText.includes('Islamic Companion') && idxText.length > 500000));
   const r = await fetch('https://api.alquran.cloud/v1/surah/112/quran-uthmani');
   log('surah 112 fetch: ' + r.status);
   await new Promise(res => setTimeout(res, 1500));
