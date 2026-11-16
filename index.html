@@ -1372,4 +1372,66 @@ scheduleJournalReminder();
   window.addEventListener('load', function () { setTimeout(run, 600); });
 })();
 </script>
+
+<script>
+/* ---- update nudge (2026-11-16) -------------------------------------------
+   Fixes the stale-build trap: sw.js calls skipWaiting() on install and
+   clients.claim() on activate, so a new version takes control while the old
+   page keeps running. Before this, the page you were looking at could be a
+   build behind and nothing said so. Now the moment a new worker takes over
+   (and only when there was already one before, so first installs stay quiet)
+   a small chip appears; tapping it reloads into the new build. It is
+   deliberately a tap and not an auto-reload, so it can never interrupt
+   prayer audio or wipe a half-filled journal entry.                        */
+(function () {
+  if (!('serviceWorker' in navigator)) return;
+
+  var hadController = !!navigator.serviceWorker.controller;
+  var chipShown = false;
+
+  function showChip() {
+    if (chipShown || document.getElementById('icUpdateChip')) return;
+    chipShown = true;
+    var b = document.createElement('button');
+    b.id = 'icUpdateChip';
+    b.type = 'button';
+    b.setAttribute('aria-label', 'A new version is ready. Reload the app now.');
+    b.textContent = '\u21bb Update ready \u2014 tap to refresh';
+    b.style.cssText = [
+      'position:fixed', 'left:50%', 'transform:translateX(-50%)',
+      'bottom:calc(18px + env(safe-area-inset-bottom))',
+      'z-index:100000', 'background:var(--gold,#d4af37)', 'color:#10142a',
+      'border:0', 'border-radius:999px', 'padding:.62rem 1.1rem',
+      'font:700 .85rem/1.1 inherit', 'box-shadow:0 6px 24px rgba(0,0,0,.45)',
+      'cursor:pointer', 'max-width:88vw', 'white-space:nowrap'
+    ].join(';');
+    b.addEventListener('click', function () {
+      b.textContent = '\u21bb Refreshing\u2026';
+      b.disabled = true;
+      location.reload();
+    });
+    document.body.appendChild(b);
+  }
+
+  navigator.serviceWorker.addEventListener('controllerchange', function () {
+    if (hadController) showChip();   // brand new worker took over the old page
+  });
+
+  if ('serviceWorker' in navigator && navigator.serviceWorker.ready) {
+    navigator.serviceWorker.ready.then(function (reg) {
+      if (reg.waiting && navigator.serviceWorker.controller) showChip();
+      reg.addEventListener && reg.addEventListener('updatefound', function () {
+        var nw = reg.installing;
+        if (!nw) return;
+        nw.addEventListener('statechange', function () {
+          if (nw.state === 'installed' && navigator.serviceWorker.controller) showChip();
+        });
+      });
+      document.addEventListener('visibilitychange', function () {
+        if (!document.hidden && reg.update) { try { reg.update(); } catch (e) {} }
+      });
+    }).catch(function () {});
+  }
+})();
+</script>
 </body></html>
