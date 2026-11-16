@@ -226,18 +226,27 @@ document.addEventListener('touchend',function(e){const now=Date.now();if(now-las
 
 <footer style="max-width:900px;margin:2.5rem auto 1.5rem;padding:0 1rem;color:var(--muted);font-size:0.82rem;line-height:1.7;text-align:center"><p><a href="/quran/" style="color:var(--gold-light,#f0d98a);text-decoration:none"><strong>Read the Quran online</strong></a> — all 114 surahs in Arabic with the Saheeh International translation, in your browser.</p><p style="opacity:.75">Free, no ads, no account. Works offline once installed. &nbsp;·&nbsp; <a href="/privacy.html" style="color:#f0d98a;text-decoration:none">Privacy</a> &nbsp;·&nbsp; <a href="/terms.html" style="color:#f0d98a;text-decoration:none">Terms</a></p></footer>
 <script>
-// Share the app — native share sheet on phones, clipboard fallback elsewhere
+// Share the app — native share sheet on phones, clipboard/toast fallback elsewhere.
+// If the share sheet is present but fails (common on desktop), we still give feedback.
 function shareApp(){
   var url='https://islamiccompanion.linkg540-coder.is-a.dev/';
   var data={title:'Islamic Companion',text:'Prayer times, the full Quran with recitations, qibla, duas and a nightly journal. Free, no ads, works offline.',url:url};
+  function copyFallback(){
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(url).then(function(){
+        if(typeof showToast==='function'){showToast('🔗 Link copied — paste it anywhere');}
+        else {window.prompt('Copy this link:',url);}
+      }).catch(function(){window.prompt('Copy this link:',url);});
+    } else {window.prompt('Copy this link:',url);}
+  }
   if(navigator.share){
-    navigator.share(data).catch(function(){});
+    navigator.share(data).catch(function(err){
+      if(err&&err.name==='AbortError')return; // user closed the share sheet
+      copyFallback();
+    });
     return;
   }
-  var done=function(){ if(typeof showToast==='function') showToast('🔗 Link copied — paste it anywhere'); else alert(url); };
-  if(navigator.clipboard&&navigator.clipboard.writeText){
-    navigator.clipboard.writeText(url).then(done).catch(function(){ prompt('Copy this link:',url); });
-  } else { prompt('Copy this link:',url); }
+  copyFallback();
 }
 </script>
 </body></html>
