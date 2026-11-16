@@ -184,6 +184,39 @@ function paToggle(name, on){
   try { syncPushSubscription(); } catch (e) {}
   showToast(on ? ('🔔 ' + name + ' alerts on') : ('🔕 ' + name + ' alerts off'));
 }
+// ---- Home-screen icon badge ------------------------------------------------
+// A web app cannot ship a real Android/iOS home-screen widget: widgets are
+// native code, and a PWA has none. What it CAN do is put a live number on the
+// installed icon via the Badging API, which is the closest thing to a widget a
+// PWA is allowed. We show how many prayers are still ahead today, so a glance
+// at the home screen answers "how many do I have left" without opening anything.
+function icPrayersLeftToday() {
+  const sched = window._prayerSchedule || [];
+  const now = Date.now();
+  let left = 0;
+  for (let i = 0; i < sched.length; i++) {
+    const t = new Date(sched[i].timestamp).getTime();
+    if (isFinite(t) && t > now) left++;
+  }
+  return left;
+}
+function icUpdateBadge() {
+  try {
+    const canSet = typeof navigator.setAppBadge === 'function';
+    const canClear = typeof navigator.clearAppBadge === 'function';
+    if (!canSet && !canClear) return false;          // desktop / unsupported: silent no-op
+    const left = icPrayersLeftToday();
+    if (left > 0 && canSet) {
+      const p = navigator.setAppBadge(left);
+      if (p && p.catch) p.catch(function () {});
+    } else if (canClear) {
+      const p = navigator.clearAppBadge();
+      if (p && p.catch) p.catch(function () {});
+    }
+    return true;
+  } catch (e) { return false; }
+}
+
 // ---- Qada: missed-prayer tracker -------------------------------------------
 // Counts live in localStorage under ic_qadaCounts, which syncCollect() already
 // picks up (it takes every ic_ key), so the counts ride along with the existing
@@ -861,6 +894,7 @@ function runInit(){
   populateLangSelector();
   try { paRender(); } catch (e) {}
   try { qadaRender(); } catch (e) {}
+  try { icUpdateBadge(); setTimeout(icUpdateBadge, 3000); setTimeout(icUpdateBadge, 8000); setInterval(icUpdateBadge, 60000); } catch (e) {}
   try { icOfflineInit(); } catch (e) {}
   setTimeout(function(){ try{
     const grid = document.getElementById('prayerTimes');
