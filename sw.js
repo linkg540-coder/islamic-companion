@@ -9,6 +9,8 @@
 // The Base44 function API (push subscribe, sync) is never cached.
 
 //
+// v2.5 (2026-11-16): cache bump so the corrected app.js (Hijri date spacing) and the
+// analytics tag reach installed users on their next launch.
 // v2.4 (2026-11-16): pre-adhan ON by default (js/app.js precache bumped), split JS precached, tafsir mirror-agnostic, and an
 // ACTIVE update notice: when a new worker activates while no window is open we
 // post a local notification, and periodic background sync asks for an update
@@ -19,7 +21,7 @@
 // cache expired. The install step below already fetches with cache:'reload', so
 // touching this file is enough to hand clients a fresh shell.
 
-const VERSION = 'ic-v6';
+const VERSION = 'ic-v7';
 const SHELL = `${VERSION}-shell`;
 const QURAN = `${VERSION}-quran`;
 const STATIC = `${VERSION}-static`;
