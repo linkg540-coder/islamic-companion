@@ -1498,4 +1498,86 @@ scheduleJournalReminder();
   };
 })();
 </script>
+
+<script>
+/* ---- API resilience (2026-11-16) -----------------------------------------
+   Prayer times, Quran text and mosque search all depend on free public APIs
+   (aladhan, alquran.cloud, nominatim). When one of them throws a 503 the app
+   used to show a broken tab, and repeated taps hammered the same dying host.
+   This wraps window.fetch once and, for those three read-only GET hosts only:
+     - retries once after a short jittered backoff
+     - opens a 45s circuit breaker after 3 failures and serves the cached copy
+       instead of calling a host that is clearly down
+     - still respects any AbortSignal a caller passes (fetchWithTimeout keeps
+       its own 10s cancellation), and never retries non-GET requests
+   Everything else passes straight through untouched.                        */
+(function () {
+  var HOSTS = ['api.aladhan.com', 'api.alquran.cloud', 'nominatim.openstreetmap.org'];
+  var TIMEOUT = 12000, FAILS_TO_OPEN = 3, COOLDOWN = 45000;
+  var state = {};
+  var orig = window.fetch;
+  if (!orig || orig.__icResilient) return;
+
+  function hostOf(input) {
+    try {
+      var u = typeof input === 'string' ? input : (input && input.url) || '';
+      if (!u) return '';
+      return new URL(u, location.href).hostname;
+    } catch (e) { return ''; }
+  }
+  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  function isGet(init) {
+    if (init && init.method && String(init.method).toUpperCase() !== 'GET') return false;
+    return true;
+  }
+  function cached(input) {
+    return new Promise(function (resolve, reject) {
+      if (typeof caches === 'undefined' || !caches.match) return reject(new Error('no cache'));
+      caches.match(input).then(function (hit) { hit ? resolve(hit) : reject(new Error('miss')); },
+                               function () { reject(new Error('miss')); });
+    });
+  }
+  function once(input, init) {
+    if (init && init.signal) return orig.call(window, input, init);   // caller owns cancellation
+    var ctrl = typeof AbortController === 'function' ? new AbortController() : null;
+    var opts = {}, k;
+    if (init) for (k in init) if (Object.prototype.hasOwnProperty.call(init, k)) opts[k] = init[k];
+    if (ctrl) opts.signal = ctrl.signal;
+    var timer = ctrl ? setTimeout(function () { try { ctrl.abort(); } catch (e) {} }, TIMEOUT) : null;
+    return orig.call(window, input, opts).then(
+      function (r) { if (timer) clearTimeout(timer); return r; },
+      function (e) { if (timer) clearTimeout(timer); throw e; });
+  }
+
+  var resilient = function (input, init) {
+    var host = hostOf(input);
+    if (HOSTS.indexOf(host) === -1 || !isGet(init)) return orig.apply(window, arguments);
+    var st = state[host] || (state[host] = { fails: 0, openUntil: 0, recovered: 0 });
+
+    function ok(r) {
+      if (r && (r.ok || r.type === 'opaque' || r.status === 0)) { st.fails = 0; return r; }
+      throw new Error('HTTP ' + (r && r.status));
+    }
+
+    // circuit open: hand back the cached response, never call a dead host
+    if (Date.now() < st.openUntil) {
+      return cached(input).catch(function () { return once(input, init).then(ok); });
+    }
+
+    return once(input, init).then(ok).catch(function (err) {
+      st.fails++;
+      return sleep(350 + Math.random() * 350)
+        .then(function () { return once(input, init); })
+        .then(ok)
+        .catch(function () {
+          if (st.fails >= FAILS_TO_OPEN) st.openUntil = Date.now() + COOLDOWN;
+          return cached(input).catch(function () { throw err; });
+        });
+    });
+  };
+  resilient.__icResilient = true;
+  window.fetch = resilient;
+  window.icApiHealth = function () { return JSON.parse(JSON.stringify(state)); };
+})();
+</script>
 </body></html>
