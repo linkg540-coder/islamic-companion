@@ -9,19 +9,24 @@
 // The Base44 function API (push subscribe, sync) is never cached.
 
 //
-// v2.2 (2026-11-16): adds the tafsir CDN to the offline cache.: byte-level change to force a re-install so every client
+// v2.3 (2026-11-16): split JS precached, tafsir mirror-agnostic, and an
+// ACTIVE update notice: when a new worker activates while no window is open we
+// post a local notification, and periodic background sync asks for an update
+// even if the app was never opened.: byte-level change to force a re-install so every client
 // re-precaches the shell. Symptom this fixes: after an index.html update some
 // devices kept serving the old HTML from the shell cache, so new features
 // (manifest, iOS safe areas, accessibility semantics) never appeared until the
 // cache expired. The install step below already fetches with cache:'reload', so
 // touching this file is enough to hand clients a fresh shell.
 
-const VERSION = 'ic-v2';
+const VERSION = 'ic-v3';
 const SHELL = `${VERSION}-shell`;
 const QURAN = `${VERSION}-quran`;
 const STATIC = `${VERSION}-static`;
-const SHELL_FILES = ['./', './index.html'];
+const SHELL_FILES = ['./', './index.html', './js/app.js', './js/quran-player.js', './js/layers.js'];
 const API_HOSTS = ['api.alquran.cloud', 'api.aladhan.com'];
+// tafsir is served from any of these mirrors; cache whichever one answered
+const TAFSIR_HOSTS = ['cdn.jsdelivr.net', 'fastly.jsdelivr.net', 'gcore.jsdelivr.net', 'raw.githubusercontent.com'];
 
 self.addEventListener('install', e => {
   e.waitUntil((async () => {
@@ -36,6 +41,36 @@ self.addEventListener('activate', e => {
     const keep = new Set([SHELL, QURAN, STATIC]);
     for (const key of await caches.keys()) if (!keep.has(key)) await caches.delete(key);
     await self.clients.claim();
+    await announceUpdate();
+  })());
+});
+
+// A new build is live. Open windows get the in-app pill; if the app is closed,
+// the owner gets a local notification instead, so the update is not silent.
+async function announceUpdate() {
+  try {
+    const windows = (await self.clients.matchAll({ type: 'window', includeUncontrolled: true }))
+      .filter(c => c.visibilityState === 'visible' || c.visibilityState === 'hidden');
+    for (const c of windows) { try { c.postMessage({ type: 'IC_UPDATED' }); } catch (_) {} }
+    if (windows.length) return;
+    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+    await self.registration.showNotification('🕌 Islamic Companion updated', {
+      body: 'A new version is ready. Tap to open it.',
+      tag: 'ic-update',
+      data: { url: '/' },
+      icon: '/icons/icon-192.png',
+      badge: '/icons/icon-192.png'
+    });
+  } catch (_) {}
+}
+
+// Chrome/Android periodic background sync: lets the app learn about a new build
+// while it is closed and closed-notify the owner.
+self.addEventListener('periodicsync', e => {
+  if (e.tag !== 'ic-update-check') return;
+  e.waitUntil((async () => {
+    try { await self.registration.update(); } catch (_) {}
+    // update() only downloads a changed worker; activation does the notifying
   })());
 });
 
@@ -86,7 +121,7 @@ self.addEventListener('fetch', e => {
   }
 
   // tafsir (Ibn Kathir text per ayah) — open a verse once, read it offline after
-  if (url.hostname === 'cdn.jsdelivr.net' && url.pathname.indexOf('/gh/spa5k/tafsir_api') === 0) {
+  if (TAFSIR_HOSTS.indexOf(url.hostname) !== -1 && url.pathname.indexOf('/tafsir_api') !== -1) {
     e.respondWith(staleWhileRevalidate(req, QURAN));
     return;
   }
