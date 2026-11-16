@@ -184,6 +184,80 @@ function paToggle(name, on){
   try { syncPushSubscription(); } catch (e) {}
   showToast(on ? ('🔔 ' + name + ' alerts on') : ('🔕 ' + name + ' alerts off'));
 }
+// ---- Qada: missed-prayer tracker -------------------------------------------
+// Counts live in localStorage under ic_qadaCounts, which syncCollect() already
+// picks up (it takes every ic_ key), so the counts ride along with the existing
+// cloud backup with no extra plumbing. Decrementing floors at zero: you cannot
+// owe a negative prayer, and a stray tap must never wipe the slate by surprise.
+const QADA_PRAYERS = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha', 'Witr'];
+function qadaData() {
+  let raw = {};
+  try { raw = JSON.parse(Settings.get('qadaCounts') || '{}') || {}; } catch (e) { raw = {}; }
+  const out = {};
+  for (const n of QADA_PRAYERS) {
+    const v = parseInt(String(raw[n]), 10);
+    out[n] = Number.isFinite(v) && v > 0 ? Math.min(9999, v) : 0;
+  }
+  return out;
+}
+function qadaTotal(o) {
+  const d = o || qadaData();
+  let sum = 0;
+  for (const n of QADA_PRAYERS) sum += (d[n] || 0);
+  return sum;
+}
+function qadaSave(o) {
+  Settings.set('qadaCounts', JSON.stringify(o));
+  try {
+    if (typeof syncGetAuth === 'function' && syncGetAuth() && typeof syncUpload === 'function') {
+      setTimeout(function () { try { syncUpload(true); } catch (e) {} }, 1500);
+    }
+  } catch (e) {}
+}
+function qadaChange(name, delta) {
+  if (QADA_PRAYERS.indexOf(name) === -1) return;
+  const o = qadaData();
+  const next = Math.max(0, Math.min(9999, (o[name] || 0) + delta));
+  if (next === o[name]) { if (delta < 0) showToast('Nothing owed for ' + name); return; }
+  o[name] = next;
+  qadaSave(o);
+  qadaRender();
+  const total = qadaTotal(o);
+  if (delta < 0) showToast(next ? ('\u2705 ' + name + ' made up \u00b7 ' + total + ' left') : ('\u2705 ' + name + ' cleared'));
+  else showToast('\u2795 ' + name + ' \u00b7 ' + total + ' owed');
+}
+function qadaReset() {
+  let ok = true;
+  try { ok = confirm('Clear every qada count?'); } catch (e) { ok = true; }
+  if (!ok) return;
+  const z = {};
+  for (const n of QADA_PRAYERS) z[n] = 0;
+  qadaSave(z);
+  qadaRender();
+  showToast('Qada cleared');
+}
+function qadaRender() {
+  const host = document.getElementById('qadaRows');
+  if (!host) return;
+  const o = qadaData();
+  host.innerHTML = QADA_PRAYERS.map(function (n) {
+    const c = o[n];
+    return '<div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:.4rem 0;border-bottom:1px solid var(--border)">'
+      + '<span style="font-size:.92rem">' + n + '</span>'
+      + '<span style="display:flex;align-items:center;gap:.35rem">'
+      + '<button onclick="qadaChange(\'' + n + '\',-1)" aria-label="Made one ' + n + ' up" style="min-width:2rem;padding:.2rem .55rem;border-color:var(--emerald-light)">\u2212</button>'
+      + '<b style="min-width:2.4rem;text-align:center;font-size:.95rem;color:' + (c ? 'var(--gold)' : 'var(--muted)') + '">' + c + '</b>'
+      + '<button onclick="qadaChange(\'' + n + '\',1)" aria-label="Add one ' + n + '" style="min-width:2rem;padding:.2rem .55rem">+</button>'
+      + '</span></div>';
+  }).join('');
+  const t = document.getElementById('qadaTotal');
+  if (t) {
+    const tot = qadaTotal(o);
+    t.textContent = tot ? (tot + ' owed') : 'Nothing owed \u00b7 alhamdulillah';
+    t.style.color = tot ? 'var(--gold)' : 'var(--emerald-light)';
+  }
+}
+
 function scheduleNotifications(){ try{adhanSchedule()}catch(e){} if (!checkNotifPermission()) return;try{syncPushSubscription()}catch(e){}scheduledNotifTimes.forEach(id => clearTimeout(id));scheduledNotifTimes = [];const now = new Date();const _lead = paLead()*60000;window._prayerSchedule.forEach(p =>{ if(!paIsOn(p.name)) return; const prayerTime = new Date(p.timestamp);const preDelay = (prayerTime - now) - _lead;if (_lead > 0 && preDelay > 0 && preDelay < 86400000){ const pid = setTimeout(() =>{ new Notification('⏳ ' + p.name + ' in ' + paLead() + ' min',{ body: 'Adhan in ' + paLead() + ' minutes — get ready for ' + p.name + '.', icon: '🕌', tag: 'pre-' + p.name });}, preDelay);scheduledNotifTimes.push(pid);}const delay = prayerTime - now;if (delay > 0 && delay < 86400000){ const id = setTimeout(() =>{ new Notification('🕌 ' + p.name + ' Prayer',{ body: 'It\'s time for ' + p.name + ' prayer. ' + p.time, icon: '🕌', tag: 'prayer-' + p.name, vibrate: [200, 100, 200] });}, delay);scheduledNotifTimes.push(id);}});}function icOfflineInit(){
   var chip = document.createElement('div');
   chip.id = 'icOfflineChip';
@@ -304,6 +378,7 @@ function showJournalPane(pane,btn){
   document.getElementById('jsb-reminder').classList.toggle('active',pane==='reminder');
   if(pane==='reminder')jrLoad();
   try{paRender();}catch(e){}
+  try{qadaRender();}catch(e){}
   if(btn&&navigator.vibrate)navigator.vibrate(10);
 }
 function jrFmt12(t){let[h,m]=t.split(':').map(Number);const ap=h>=12?'PM':'AM';h=h%12||12;return h+':'+String(m).padStart(2,'0')+' '+ap}
@@ -785,6 +860,7 @@ function runInit(){
   loadSettings();
   populateLangSelector();
   try { paRender(); } catch (e) {}
+  try { qadaRender(); } catch (e) {}
   try { icOfflineInit(); } catch (e) {}
   setTimeout(function(){ try{
     const grid = document.getElementById('prayerTimes');
