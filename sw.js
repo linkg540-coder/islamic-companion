@@ -9,7 +9,7 @@
 // The Base44 function API (push subscribe, sync) is never cached.
 
 //
-// v2.3 (2026-11-16): split JS precached, tafsir mirror-agnostic, and an
+// v2.4 (2026-11-16): pre-adhan ON by default (js/app.js precache bumped), split JS precached, tafsir mirror-agnostic, and an
 // ACTIVE update notice: when a new worker activates while no window is open we
 // post a local notification, and periodic background sync asks for an update
 // even if the app was never opened.: byte-level change to force a re-install so every client
@@ -19,7 +19,7 @@
 // cache expired. The install step below already fetches with cache:'reload', so
 // touching this file is enough to hand clients a fresh shell.
 
-const VERSION = 'ic-v3';
+const VERSION = 'ic-v4';
 const SHELL = `${VERSION}-shell`;
 const QURAN = `${VERSION}-quran`;
 const STATIC = `${VERSION}-static`;

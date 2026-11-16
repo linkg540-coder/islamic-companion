@@ -150,8 +150,15 @@ function paRender(){
   }).join('');
 }
 function paLead(){
-  var raw = 0;
-  try { raw = parseInt(String(Settings.get('preAdhanLead') || '0'), 10); } catch (e) { raw = 0; }
+  // Heads-up defaults to ON at 15 min. It used to default to 0, which meant the
+  // whole pre-adhan path existed but never ran for anyone who did not go looking
+  // for this dropdown (nobody had preLead > 0 on record). An explicit "Off" the
+  // user picked is still respected, so this only fills the never-chosen case.
+  var stored = null;
+  try { stored = Settings.get('preAdhanLead'); } catch (e) { stored = null; }
+  var raw;
+  if (stored === null || stored === undefined || String(stored).trim() === '') raw = 15;
+  else raw = parseInt(String(stored), 10);
   if (!isFinite(raw) || raw < 0 || raw > 60) raw = 0;
   return raw;
 }
