@@ -46,7 +46,22 @@ input,textarea{-webkit-user-select:text;user-select:text}
   input, textarea, select { font-size: 16px; }
 }
 </style>
-</head><body><div id="appSplash" style="position:fixed;inset:0;background:var(--night);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:99999;transition:opacity 0.3s ease;animation:splashAutoHide 1s ease 6s forwards"><noscript><div style="color:#e74c3c;font-size:0.95rem;max-width:280px;text-align:center;line-height:1.5;padding:1rem">⚠ JavaScript is disabled or blocked on this browser. Enable it (Settings → Safari/Chrome → Advanced) or open this link in a different browser.</div></noscript>
+
+<style id="a11y-css">
+/* keyboard focus has to be visible; several rules killed the default outline */
+:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; border-radius: .4rem; }
+.tab-btn:focus-visible, .surah-item:focus-visible { outline-offset: 3px; }
+.skip-link { position: absolute; left: -9999px; top: 0; z-index: 100001; background: var(--gold); color: #10142a;
+  padding: .6rem 1rem; border-radius: 0 0 .6rem 0; font-weight: 700; text-decoration: none; }
+.skip-link:focus { left: 0; }
+/* respect the OS "reduce motion" setting */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important; scroll-behavior: auto !important; }
+}
+</style>
+</head><body>
+<a class="skip-link" href="#tab-prayer">Skip to content</a><div id="appSplash" aria-hidden="true" style="position:fixed;inset:0;background:var(--night);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:99999;transition:opacity 0.3s ease;animation:splashAutoHide 1s ease 6s forwards"><noscript><div style="color:#e74c3c;font-size:0.95rem;max-width:280px;text-align:center;line-height:1.5;padding:1rem">⚠ JavaScript is disabled or blocked on this browser. Enable it (Settings → Safari/Chrome → Advanced) or open this link in a different browser.</div></noscript>
 <div style="font-size:3rem;margin-bottom:1rem;animation:splashPulse 1.5s ease-in-out infinite">🕌</div>
 <div style="color:var(--gold);font-size:1.1rem;font-weight:600;margin-bottom:0.5rem">Islamic Companion</div>
 <div style="width:120px;height:3px;background:var(--night-light);border-radius:2px;overflow:hidden"><div id="splashBar" style="width:0;height:100%;background:var(--gold);transition:width 0.3s ease"></div></div>
@@ -80,7 +95,7 @@ document.addEventListener('gesturechange',function(e){e.preventDefault()});
 document.addEventListener('dblclick',function(e){e.preventDefault()});
 let lastTouchEnd=0;
 document.addEventListener('touchend',function(e){const now=Date.now();if(now-lastTouchEnd<=300){e.preventDefault()}lastTouchEnd=now},{passive:false});
-</script><div class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Toggle light/dark">🌙</div><div class="notif-bell" id="notifBell" onclick="toggleNotifications()" title="Enable prayer notifications">🔔</div><div class="header"><div class="credits"><span>👑 Owner/Creator: <b>Link Geoffrey</b></span><span>💫 Inspiration: <b>Mariam Akhter</b></span></div><h1>🕌 Islamic Companion 🌸</h1><p>Prayer · Quran · Qibla · Duas · Tasbih · Knowledge · Adhan · Themes</p><div class="hijri" id="hijriDate">Loading Hijri date…</div></div><div id="dailyVerse" style="max-width:600px;margin:0 auto;padding:0.8rem 1.5rem;text-align:center;background:rgba(30, 64, 175,.08);border-radius:0 0 1rem 1rem;border:1px solid var(--border);border-top:none"><div style="color:var(--emerald-light);font-size:.8rem;margin-bottom:.3rem">📖 Verse of the Day</div><div id="dailyVerseAr" style="font-family:'Amiri',serif;font-size:1.4rem;color:var(--gold);direction:rtl;margin:.3rem 0;line-height:1.8">Loading…</div><div id="dailyVerseEn" style="color:#ff5c8a;font-size:.85rem;line-height:1.5;margin-top:.3rem"></div><div id="dailyVerseRef" style="color:var(--emerald-light);font-size:.8rem;margin-top:.3rem"></div></div><div class="nav-tabs"><button class="tab-btn active" onclick="showTab('prayer', this)">🕌 Prayer</button><button class="tab-btn" onclick="showTab('quran', this)">📖 Quran</button><button class="tab-btn" onclick="showTab('qibla', this)">🧭 Qibla</button><button class="tab-btn" onclick="showTab('duas', this)">🤲 Duas</button><button class="tab-btn" onclick="showTab('greets', this)">🗣️ Greetings</button><button class="tab-btn" onclick="showTab('hadiths', this)">📜 Hadiths</button><button class="tab-btn" onclick="showTab('ramadan', this)">🌙 Ramadan</button><button class="tab-btn" onclick="showTab('tasbih', this)">📿 Tasbih</button><button class="tab-btn" onclick="showTab('ai', this)">📚 Knowledge</button><button class="tab-btn" onclick="showTab('towns', this)">🗺️ Locations</button><button class="tab-btn" onclick="showTab('mosques', this)">🕌 Mosques</button><button class="tab-btn" onclick="showTab('journal', this)">📓 Journal</button><button class="tab-btn" onclick="showTab('sync', this)">☁️ Sync</button></div><div <div class="tab-content" id="tab-sync"><div class="card"><div class="card-title">☁️ Cloud Sync — Your Account</div><div id="syncOut"><p style="color:var(--muted);font-size:0.9rem;line-height:1.6;margin-bottom:1rem">Create an account to back up your journal, trackers and settings. Log in on any device to restore everything.</p><div class="location-bar"><input type="email" id="syncEmail" placeholder="Email" autocomplete="email" style="min-width:200px"><input type="password" id="syncPw" placeholder="Password (6+ chars)" autocomplete="new-password" style="min-width:180px"></div><div class="location-bar" style="margin-bottom:0"><button onclick="syncDoRegister()">✨ Create account</button><button onclick="syncDoLogin()" style="border-color:var(--emerald-light)">Log in</button><button onclick="syncWipeDevice(false)" style="border-color:var(--danger);color:var(--danger)">Clear this device</button></div></div><div id="syncIn" style="display:none"><p id="syncWho" style="color:var(--gold);font-size:0.9rem;margin-bottom:0.8rem"></p><div class="location-bar"><button onclick="syncUpload()">⬆️ Back up now</button><button onclick="syncRestore()" style="border-color:var(--emerald-light)">⬇️ Restore</button><button onclick="syncLogout()" style="border-color:var(--accent);color:var(--accent)">Log out</button></div><p style="color:var(--muted);font-size:0.8rem;line-height:1.5;margin-top:0.8rem">Auto-backup runs a few seconds after each change. Restore replaces this device's data with the cloud copy.</p></div></div></div><div class="tab-content" id="tab-journal">
+</script><div class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Toggle light/dark">🌙</div><div class="notif-bell" id="notifBell" onclick="toggleNotifications()" title="Enable prayer notifications">🔔</div><div class="header"><div class="credits"><span>👑 Owner/Creator: <b>Link Geoffrey</b></span><span>💫 Inspiration: <b>Mariam Akhter</b></span></div><h1>🕌 Islamic Companion 🌸</h1><p>Prayer · Quran · Qibla · Duas · Tasbih · Knowledge · Adhan · Themes</p><div class="hijri" id="hijriDate">Loading Hijri date…</div></div><div id="dailyVerse" style="max-width:600px;margin:0 auto;padding:0.8rem 1.5rem;text-align:center;background:rgba(30, 64, 175,.08);border-radius:0 0 1rem 1rem;border:1px solid var(--border);border-top:none"><div style="color:var(--emerald-light);font-size:.8rem;margin-bottom:.3rem">📖 Verse of the Day</div><div id="dailyVerseAr" style="font-family:'Amiri',serif;font-size:1.4rem;color:var(--gold);direction:rtl;margin:.3rem 0;line-height:1.8">Loading…</div><div id="dailyVerseEn" style="color:#ff5c8a;font-size:.85rem;line-height:1.5;margin-top:.3rem"></div><div id="dailyVerseRef" style="color:var(--emerald-light);font-size:.8rem;margin-top:.3rem"></div></div><div class="nav-tabs" role="tablist" aria-label="App sections"><button class="tab-btn active" onclick="showTab('prayer', this)">🕌 Prayer</button><button class="tab-btn" onclick="showTab('quran', this)">📖 Quran</button><button class="tab-btn" onclick="showTab('qibla', this)">🧭 Qibla</button><button class="tab-btn" onclick="showTab('duas', this)">🤲 Duas</button><button class="tab-btn" onclick="showTab('greets', this)">🗣️ Greetings</button><button class="tab-btn" onclick="showTab('hadiths', this)">📜 Hadiths</button><button class="tab-btn" onclick="showTab('ramadan', this)">🌙 Ramadan</button><button class="tab-btn" onclick="showTab('tasbih', this)">📿 Tasbih</button><button class="tab-btn" onclick="showTab('ai', this)">📚 Knowledge</button><button class="tab-btn" onclick="showTab('towns', this)">🗺️ Locations</button><button class="tab-btn" onclick="showTab('mosques', this)">🕌 Mosques</button><button class="tab-btn" onclick="showTab('journal', this)">📓 Journal</button><button class="tab-btn" onclick="showTab('sync', this)">☁️ Sync</button></div><div <div class="tab-content" id="tab-sync"><div class="card"><div class="card-title">☁️ Cloud Sync — Your Account</div><div id="syncOut"><p style="color:var(--muted);font-size:0.9rem;line-height:1.6;margin-bottom:1rem">Create an account to back up your journal, trackers and settings. Log in on any device to restore everything.</p><div class="location-bar"><input type="email" id="syncEmail" placeholder="Email" autocomplete="email" style="min-width:200px"><input type="password" id="syncPw" placeholder="Password (6+ chars)" autocomplete="new-password" style="min-width:180px"></div><div class="location-bar" style="margin-bottom:0"><button onclick="syncDoRegister()">✨ Create account</button><button onclick="syncDoLogin()" style="border-color:var(--emerald-light)">Log in</button><button onclick="syncWipeDevice(false)" style="border-color:var(--danger);color:var(--danger)">Clear this device</button></div></div><div id="syncIn" style="display:none"><p id="syncWho" style="color:var(--gold);font-size:0.9rem;margin-bottom:0.8rem"></p><div class="location-bar"><button onclick="syncUpload()">⬆️ Back up now</button><button onclick="syncRestore()" style="border-color:var(--emerald-light)">⬇️ Restore</button><button onclick="syncLogout()" style="border-color:var(--accent);color:var(--accent)">Log out</button></div><p style="color:var(--muted);font-size:0.8rem;line-height:1.5;margin-top:0.8rem">Auto-backup runs a few seconds after each change. Restore replaces this device's data with the cloud copy.</p></div></div></div><div class="tab-content" id="tab-journal">
 <style>.j-subtabs{display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1rem}.ci-label{color:var(--muted);font-size:0.8rem;margin:0.8rem 0 0.3rem}.ci-moods{display:flex;gap:0.5rem;flex-wrap:wrap}.ci-mood-btn{font-size:1.6rem;background:var(--card);border:1px solid var(--border);border-radius:0.8rem;padding:0.4rem 0.7rem;cursor:pointer;transition:all .2s}.ci-mood-btn.sel{border-color:var(--gold);background:rgba(212,175,55,.15);transform:scale(1.12)}.ci-input{width:100%;background:var(--night-light);border:1px solid var(--border);border-radius:0.6rem;color:var(--text);padding:0.6rem;font-family:inherit;resize:vertical;margin-bottom:0.2rem}.ci-input:focus{outline:none;border-color:var(--gold)}.ci-save{margin-top:0.8rem;width:100%;padding:0.7rem;border-radius:2rem;border:1px solid var(--gold);background:linear-gradient(135deg,var(--emerald),var(--emerald-dark));color:#fff;font-size:0.95rem;cursor:pointer}.ci-save:hover{box-shadow:0 2px 15px rgba(13,148,136,0.4)}.ci-item{padding:0.6rem 0;border-bottom:1px solid var(--border);font-size:0.85rem}.ci-item:last-child{border-bottom:none}.ci-item .ci-d{color:var(--gold);font-weight:600;font-size:0.8rem}.j-entry{padding:0.8rem;border:1px solid var(--border);border-radius:0.6rem;margin-bottom:0.6rem;background:var(--night-light)}.j-head{display:flex;justify-content:space-between;font-size:0.75rem;color:var(--muted)}.j-del{cursor:pointer;opacity:.5}.j-del:hover{opacity:1}.j-title{color:var(--gold);font-weight:600;margin:0.3rem 0;font-size:0.95rem}.j-body{font-size:0.88rem;line-height:1.5;color:var(--text);white-space:pre-wrap}.ci-actions{display:flex;gap:.5rem;margin-top:.4rem}.ci-actions button{background:var(--night-light);border:1px solid var(--border);border-radius:2rem;color:var(--muted);font-size:.72rem;padding:.25rem .7rem;cursor:pointer;transition:all .2s}.ci-actions button:hover{color:var(--gold);border-color:var(--gold)}.jr-switch{position:relative;display:inline-block;width:54px;height:28px}.jr-switch input{opacity:0;width:0;height:0}.jr-slider{position:absolute;cursor:pointer;inset:0;background:var(--night-light);border:1px solid var(--border);border-radius:28px;transition:.3s}.jr-slider:before{content:"";position:absolute;height:20px;width:20px;left:3px;top:3px;background:var(--muted);border-radius:50%;transition:.3s}.jr-switch input:checked + .jr-slider{background:rgba(13,148,136,.55);border-color:var(--emerald)}.jr-switch input:checked + .jr-slider:before{transform:translateX(26px);background:var(--emerald-light)}</style>
 <div class="card">
 <div class="card-title">📓 Journal</div>
@@ -1237,6 +1252,124 @@ scheduleJournalReminder();
     try { showTab(name, btn); } catch (e) {}
   }
   window.addEventListener('load', function(){ setTimeout(apply, 400); });
+})();
+</script>
+
+<script>
+/* ---- accessibility layer (2026-11-16) -------------------------------------
+   The app is one file with 121 buttons and almost no semantics. Rather than
+   hand-editing every template string, this decorates the DOM once at boot and
+   again after each tab switch: real tab semantics, accessible names for
+   emoji-only buttons, labels for unlabelled fields, lang/dir on Arabic text,
+   a polite live region for toasts and a main landmark.                        */
+(function () {
+  var EMOJI = /[\u{1F000}-\u{1FAFF}\u{2190}-\u{2BFF}\u{FE0F}\u{200D}\u{FE0E}\s]/gu;
+
+  function pretty(s) {
+    return String(s || '').replace(/[-_]+/g, ' ')
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      .replace(/\s+/g, ' ').trim();
+  }
+
+  function tabs() {
+    var list = document.querySelectorAll('.tab-btn');
+    for (var i = 0; i < list.length; i++) {
+      var b = list[i];
+      var m = /showTab\('([a-z]+)'/.exec(b.getAttribute('onclick') || '');
+      if (!m) continue;
+      var name = m[1];
+      b.setAttribute('role', 'tab');
+      if (!b.id) b.id = 'tabbtn-' + name;
+      b.setAttribute('aria-controls', 'tab-' + name);
+      b.setAttribute('aria-selected', b.classList.contains('active') ? 'true' : 'false');
+      var panel = document.getElementById('tab-' + name);
+      if (panel) {
+        panel.setAttribute('role', 'tabpanel');
+        panel.setAttribute('aria-labelledby', b.id);
+        if (!panel.hasAttribute('tabindex')) panel.setAttribute('tabindex', '0');
+      }
+    }
+  }
+
+  function arabic(root) {
+    var sel = '.arabic, .arabic-text, .dua-arabic';
+    var els = (root || document).querySelectorAll(sel);
+    for (var i = 0; i < els.length; i++) {
+      var el = els[i];
+      if (el.hasAttribute('lang')) continue;
+      el.setAttribute('lang', 'ar');
+      try { if (getComputedStyle(el).direction !== 'rtl') el.setAttribute('dir', 'rtl'); } catch (e) {}
+    }
+  }
+
+  function buttons() {
+    var list = document.querySelectorAll('button');
+    for (var i = 0; i < list.length; i++) {
+      var b = list[i];
+      if (b.hasAttribute('aria-label') || b.hasAttribute('aria-labelledby')) continue;
+      var visible = (b.textContent || '').replace(EMOJI, '');
+      if (visible.length) continue;                      // it already reads as text
+      var label = b.getAttribute('title') || b.getAttribute('data-mood') || b.getAttribute('data-label');
+      if (!label && b.id) label = pretty(b.id);
+      if (!label) {
+        var fn = /^\s*([A-Za-z_$][\w$]*)\(/.exec(b.getAttribute('onclick') || '');
+        if (fn) label = pretty(fn[1]);
+      }
+      if (label) b.setAttribute('aria-label', label);
+    }
+  }
+
+  function fields() {
+    var list = document.querySelectorAll('input, select, textarea');
+    for (var i = 0; i < list.length; i++) {
+      var el = list[i];
+      if (el.type === 'hidden') continue;
+      if (el.hasAttribute('aria-label') || el.hasAttribute('aria-labelledby')) continue;
+      if (el.id && document.querySelector('label[for="' + el.id + '"]')) continue;
+      var label = el.getAttribute('placeholder') || el.getAttribute('title') || pretty(el.id) || el.tagName.toLowerCase();
+      el.setAttribute('aria-label', label);
+      if (el.tagName === 'SELECT' && !el.getAttribute('aria-label')) el.setAttribute('aria-label', 'Choose an option');
+    }
+  }
+
+  function landmarks() {
+    if (document.querySelector('[role="main"]')) return;
+    var first = document.getElementById('tab-prayer');
+    if (first && first.parentElement) first.parentElement.setAttribute('role', 'main');
+  }
+
+  function toastLive() {
+    if (typeof window.showToast !== 'function' || window.showToast.__a11y) return;
+    var orig = window.showToast;
+    var wrapped = function () {
+      var r = orig.apply(this, arguments);
+      var t = document.querySelector('.toast');
+      if (t) { t.setAttribute('role', 'status'); t.setAttribute('aria-live', 'polite'); }
+      return r;
+    };
+    wrapped.__a11y = true;
+    window.showToast = wrapped;
+  }
+
+  function tabHook() {
+    if (typeof window.showTab !== 'function' || window.showTab.__a11y) return;
+    var orig = window.showTab;
+    var wrapped = function () {
+      var r = orig.apply(this, arguments);
+      try { tabs(); arabic(); buttons(); } catch (e) {}
+      return r;
+    };
+    wrapped.__a11y = true;
+    window.showTab = wrapped;
+  }
+
+  function run() {
+    try { tabs(); arabic(); buttons(); fields(); landmarks(); toastLive(); tabHook(); } catch (e) {}
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { setTimeout(run, 200); });
+  else setTimeout(run, 200);
+  window.addEventListener('load', function () { setTimeout(run, 600); });
 })();
 </script>
 </body></html>
