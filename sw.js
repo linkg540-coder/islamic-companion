@@ -8,6 +8,14 @@
 //   same-origin static -> cache first, refreshed in the background
 // The Base44 function API (push subscribe, sync) is never cached.
 
+//
+// v2.1 (2026-11-16): byte-level change to force a re-install so every client
+// re-precaches the shell. Symptom this fixes: after an index.html update some
+// devices kept serving the old HTML from the shell cache, so new features
+// (manifest, iOS safe areas, accessibility semantics) never appeared until the
+// cache expired. The install step below already fetches with cache:'reload', so
+// touching this file is enough to hand clients a fresh shell.
+
 const VERSION = 'ic-v2';
 const SHELL = `${VERSION}-shell`;
 const QURAN = `${VERSION}-quran`;
