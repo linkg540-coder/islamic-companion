@@ -9,7 +9,7 @@
 // The Base44 function API (push subscribe, sync) is never cached.
 
 //
-// v2.1 (2026-11-16): byte-level change to force a re-install so every client
+// v2.2 (2026-11-16): adds the tafsir CDN to the offline cache.: byte-level change to force a re-install so every client
 // re-precaches the shell. Symptom this fixes: after an index.html update some
 // devices kept serving the old HTML from the shell cache, so new features
 // (manifest, iOS safe areas, accessibility semantics) never appeared until the
@@ -81,6 +81,12 @@ self.addEventListener('fetch', e => {
 
   // Quran + prayer times
   if (isApi(url)) {
+    e.respondWith(staleWhileRevalidate(req, QURAN));
+    return;
+  }
+
+  // tafsir (Ibn Kathir text per ayah) — open a verse once, read it offline after
+  if (url.hostname === 'cdn.jsdelivr.net' && url.pathname.indexOf('/gh/spa5k/tafsir_api') === 0) {
     e.respondWith(staleWhileRevalidate(req, QURAN));
     return;
   }
