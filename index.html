@@ -293,4 +293,121 @@ function shareApp(){
   copyFallback();
 }
 </script>
+
+<!-- Add to Home Screen prompt (mobile only, dismissible) -->
+<style>
+#a2hs{position:fixed;left:.75rem;right:.75rem;bottom:calc(4.75rem + env(safe-area-inset-bottom));z-index:9000;display:none;background:var(--card);border:1px solid var(--border);border-radius:1rem;padding:.85rem .9rem;box-shadow:0 12px 30px rgba(0,0,0,.28);color:var(--text)}
+#a2hs.show{display:block;animation:a2hs-in .28s ease-out}
+@keyframes a2hs-in{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+#a2hs .a2hs-row{display:flex;gap:.7rem;align-items:flex-start}
+#a2hs .a2hs-icon{width:38px;height:38px;border-radius:.6rem;background:linear-gradient(135deg,var(--gold),var(--gold-dark));display:flex;align-items:center;justify-content:center;font-size:1.05rem;flex:0 0 auto;line-height:1}
+#a2hs .a2hs-title{margin:0 0 .15rem;font-weight:600;font-size:.92rem;color:var(--text)}
+#a2hs .a2hs-body{margin:0;font-size:.8rem;line-height:1.35;color:var(--muted)}
+#a2hs .a2hs-ios{display:none;margin:.55rem 0 0;font-size:.78rem;line-height:1.35;color:var(--muted)}
+#a2hs.ios-open .a2hs-ios{display:block}
+#a2hs .a2hs-actions{display:flex;gap:.5rem;margin-top:.7rem}
+#a2hs button{font:inherit;font-size:.82rem;border-radius:.6rem;padding:.45rem .85rem;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--muted)}
+#a2hs button.primary{background:var(--gold);border-color:var(--gold);color:#1a1300;font-weight:600}
+@media (min-width:821px){#a2hs{display:none !important}}
+@media (prefers-reduced-motion:reduce){#a2hs.show{animation:none}}
+</style>
+<div id="a2hs" role="region" aria-label="Install Islamic Companion" aria-live="polite">
+  <div class="a2hs-row">
+    <div class="a2hs-icon" aria-hidden="true">&#128332;</div>
+    <div>
+      <p class="a2hs-title">Install Islamic Companion</p>
+      <p class="a2hs-body" id="a2hsBody">Full-screen prayer alerts and the Quran offline, no app store needed.</p>
+      <p class="a2hs-ios" id="a2hsIos">Tap the Share button in Safari, then choose &ldquo;Add to Home Screen&rdquo;.</p>
+    </div>
+  </div>
+  <div class="a2hs-actions">
+    <button type="button" class="primary" id="a2hsGo">Install</button>
+    <button type="button" id="a2hsNo">Not now</button>
+  </div>
+</div>
+<script>
+(function () {
+  var KEY = 'ic_a2hs_v1';
+  var el = document.getElementById('a2hs');
+  if (!el) return;
+
+  function isInstalled() {
+    try {
+      if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) return true;
+    } catch (e) {}
+    return navigator.standalone === true;
+  }
+  if (isInstalled()) return;
+
+  var rec = null;
+  try { rec = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) {}
+  if (rec && rec.dismissed && (Date.now() - (rec.at || 0)) < 30 * 86400000) return;
+  if (rec && rec.installed) return;
+
+  var ua = navigator.userAgent || '';
+  var isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  var wide = window.matchMedia ? window.matchMedia('(max-width:820px)').matches : true;
+  var touch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+  if (!wide || !touch) return;
+
+  var deferred = null;
+  var shown = false;
+  var timer = null;
+
+  function remember(dismissed, installed) {
+    try { localStorage.setItem(KEY, JSON.stringify({ dismissed: !!dismissed, installed: !!installed, at: Date.now() })); } catch (e) {}
+  }
+  function show() {
+    if (shown || isInstalled()) return;
+    shown = true;
+    el.classList.add('show');
+  }
+  function hide() {
+    shown = false;
+    el.classList.remove('show');
+  }
+
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    deferred = e;
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(show, 2500);
+  });
+
+  window.addEventListener('appinstalled', function () {
+    remember(false, true);
+    hide();
+  });
+
+  document.getElementById('a2hsNo').addEventListener('click', function () {
+    remember(true, false);
+    hide();
+  });
+
+  document.getElementById('a2hsGo').addEventListener('click', function () {
+    if (deferred) {
+      try { deferred.prompt(); } catch (e) {}
+      hide();
+      if (deferred.userChoice && deferred.userChoice.then) {
+        deferred.userChoice.then(function (choice) {
+          remember(choice && choice.outcome === 'accepted' ? false : true,
+                   choice && choice.outcome === 'accepted');
+        }).catch(function () {});
+      }
+      return;
+    }
+    if (isIOS) {
+      el.classList.add('ios-open');
+      var btn = document.getElementById('a2hsGo');
+      btn.textContent = 'Got it';
+      btn.onclick = function () { remember(true, false); hide(); };
+      return;
+    }
+    remember(true, false);
+    hide();
+  });
+
+  if (isIOS) timer = setTimeout(show, 7000);
+})();
+</script>
 </body></html>
