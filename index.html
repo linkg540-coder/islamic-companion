@@ -2,18 +2,15 @@
 /* Mobile: prevent iOS auto-zoom on input focus (needs >= 16px) */
 input,select,textarea{font-size:16px!important;font-family:inherit}
 @media (min-width:768px){input,select,textarea{font-size:inherit!important}}
-</style><link rel="preload" as="style" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" onload="this.rel='stylesheet'" /><script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Islamic Companion"><meta name="theme-color" content="#0a0e27"><meta name="description" content="Islamic Companion — Prayer Times, Quran, Qibla, Duas, Hadiths, Ramadan, Tasbih & Knowledge">
+</style><link rel="preload" as="style" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" onload="this.rel='stylesheet'" /><script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><meta name="theme-color" content="#0a0e27"><meta name="description" content="Islamic Companion — Prayer Times, Quran, Qibla, Duas, Hadiths, Ramadan, Tasbih & Knowledge">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Islamic">
 <meta name="format-detection" content="telephone=no">
-<meta name="apple-touch-fullscreen" content="yes">
 <link rel="manifest" href="/manifest.webmanifest">
-<meta name="application-name" content="Islamic Companion">
-<meta name="apple-mobile-web-app-title" content="Islamic Companion">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Islamic Companion">
+
+<meta name="application-name" content="Islamic Companion">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png">
@@ -27,6 +24,27 @@ input,textarea{-webkit-user-select:text;user-select:text}
 #compassToggle,#qiblaSyncToggle,button,.tab-btn,.surah-item,.dua-category-btn,.bookmark-btn,.ayah-play,.dua-card,.quick-topic{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 </style>
 <style id="touch-css">.touch-active{opacity:0.7;transform:scale(0.97);transition:all 0.1s ease!important}@keyframes rippleAnim{to{transform:scale(2.5);opacity:0}}.touch-ripple{position:absolute;border-radius:50%;pointer-events:none;z-index:1000}@keyframes splashAutoHide{to{opacity:0;visibility:hidden;pointer-events:none}}
+</style>
+
+<style id="ios-fit">
+/* ---- iOS standalone fit ----------------------------------------------
+   black-translucent + viewport-fit=cover means iOS gives us the full screen
+   and expects us to keep our own content out from under the notch, the clock
+   and the home indicator. Padding is 0 in Safari tabs, so this is a no-op
+   there and only kicks in on installed home-screen apps.               */
+@supports (padding: max(0px)) {
+  body { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+  .nav-tabs { top: env(safe-area-inset-top); }
+  .toast { bottom: calc(2rem + env(safe-area-inset-bottom)); }
+  #miniPlayer { padding-bottom: env(safe-area-inset-bottom); }
+  #icOfflineChip { bottom: calc(14px + env(safe-area-inset-bottom)) !important; }
+}
+/* Safari shipped backdrop-filter unprefixed only recently; older iOS needs the prefix */
+.nav-tabs { -webkit-backdrop-filter: blur(10px); }
+/* iOS zooms the page whenever a focused field is under 16px and the zoom sticks */
+@supports (-webkit-touch-callout: none) {
+  input, textarea, select { font-size: 16px; }
+}
 </style>
 </head><body><div id="appSplash" style="position:fixed;inset:0;background:var(--night);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:99999;transition:opacity 0.3s ease;animation:splashAutoHide 1s ease 6s forwards"><noscript><div style="color:#e74c3c;font-size:0.95rem;max-width:280px;text-align:center;line-height:1.5;padding:1rem">⚠ JavaScript is disabled or blocked on this browser. Enable it (Settings → Safari/Chrome → Advanced) or open this link in a different browser.</div></noscript>
 <div style="font-size:3rem;margin-bottom:1rem;animation:splashPulse 1.5s ease-in-out infinite">🕌</div>
