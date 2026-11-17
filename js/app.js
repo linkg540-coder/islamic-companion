@@ -1090,6 +1090,60 @@ let _syncT=null;function _queueSync(){if(!syncGetAuth())return;clearTimeout(_syn
 (function(){const _s=Settings.set,_j=Settings.setJSON;Settings.set=function(k,v){_s(k,v);_queueSync()};Settings.setJSON=function(k,v){_j(k,v);_queueSync()}})();
 renderSyncUI();
 // ================= END CLOUD SYNC =================
+// ================= ERROR TRACKING =================
+// In-house, no provider. Uncaught errors and unhandled rejections are posted
+// to icErrorReport and land in the IcErrorLog entity, so a bug on a real phone
+// arrives with its message, stack, build and device instead of a description.
+const IC_ERR_API = 'https://solene-11f8ed2a.base44.app/functions/icErrorReport';
+const IC_BUILD = 'ic-v21';
+let _icErrSent = 0;
+function icErrReport(kind, message, stack, extra){
+  try{
+    if(!message) return;
+    if(_icErrSent >= 8) return;              // hard cap per page load
+    _icErrSent++;
+    const body = JSON.stringify({
+      kind: kind,
+      message: String(message).slice(0,500),
+      stack: String(stack||'').slice(0,2000),
+      url: location.href.slice(0,300),
+      ua: navigator.userAgent.slice(0,240),
+      device: (typeof icDeviceId==='function') ? icDeviceId() : '',
+      build: IC_BUILD,
+      extra: String(extra||'').slice(0,500),
+      fp: String(kind+':'+message).slice(0,120),
+      at: new Date().toISOString()
+    });
+    if(navigator.sendBeacon){
+      // text/plain keeps it a "simple" request, so no CORS preflight; the
+      // function parses the body as JSON regardless of content type.
+      navigator.sendBeacon(IC_ERR_API, new Blob([body], {type:'text/plain;charset=UTF-8'}));
+    }else{
+      fetch(IC_ERR_API, {method:'POST', headers:{'Content-Type':'application/json'}, body: body, keepalive:true}).catch(function(){});
+    }
+  }catch(e){}
+}
+window.addEventListener('error', function(ev){
+  try{
+    if(ev && ev.target && ev.target !== window && ev.target.tagName){
+      const t = ev.target;
+      icErrReport('resource', 'Failed to load '+t.tagName+' '+(t.src||t.href||''), '', '');
+      return;
+    }
+    const msg = (ev && ev.message) || 'Unknown error';
+    const st = (ev && ev.error && ev.error.stack) || ((ev && ev.filename) ? ev.filename+':'+ev.lineno+':'+ev.colno : '');
+    icErrReport('error', msg, st, '');
+  }catch(e){}
+}, true);
+window.addEventListener('unhandledrejection', function(ev){
+  try{
+    const r = ev && ev.reason;
+    const msg = (r && (r.message || r)) || 'Unhandled rejection';
+    if(String(msg).indexOf('AbortError') >= 0 || String(msg).indexOf('aborted') >= 0) return;
+    icErrReport('rejection', String(msg), (r && r.stack) || '', '');
+  }catch(e){}
+});
+// ================= END ERROR TRACKING =================
 // Start init after DOM is ready
 if(document.readyState==='loading'){
   document.addEventListener('DOMContentLoaded',()=>setTimeout(runInit,50));
