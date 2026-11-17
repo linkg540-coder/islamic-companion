@@ -9,6 +9,7 @@
 // The Base44 function API (push subscribe, sync) is never cached.
 
 //
+// v2.6 (2026-11-16): mosque finder no longer hangs on a dead Overpass mirror (Photon fallback).
 // v2.5 (2026-11-16): cache bump so the corrected app.js (Hijri date spacing) and the
 // analytics tag reach installed users on their next launch.
 // v2.4 (2026-11-16): pre-adhan ON by default (js/app.js precache bumped), split JS precached, tafsir mirror-agnostic, and an
@@ -21,7 +22,7 @@
 // cache expired. The install step below already fetches with cache:'reload', so
 // touching this file is enough to hand clients a fresh shell.
 
-const VERSION = 'ic-v7';
+const VERSION = 'ic-v8';
 const SHELL = `${VERSION}-shell`;
 const QURAN = `${VERSION}-quran`;
 const STATIC = `${VERSION}-static`;
