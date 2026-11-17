@@ -761,14 +761,15 @@ let tasbihCount = parseInt(Settings.get('tasbihCount', '0')) || 0;let tasbihTarg
   info.innerHTML=`${escapeHtml(nearest.name)}• ${formatDistance(nearest.dist)}• ${direction}(${Math.round(bearing)}°)`;}function bearingToDirection(bearing){ const dirs = ['N','NE','E','SE','S','SW','W','NW'];return dirs[Math.round(bearing / 45) % 8];}function initMosqueMap(centerLat, centerLon, mosques){ const container = document.getElementById('mosqueMapContainer');const mapEl = document.getElementById('mosqueMap');if (!mapEl) return;container.style.display = 'block';if (mosqueMap){ mosqueMap.remove();mosqueMap = null;}mosqueMap = L.map(mapEl,{ zoomControl: true, attributionControl: true }).setView([centerLat, centerLon], 13);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{ attribution: '© OpenStreetMap', maxZoom: 19 }).addTo(mosqueMap);const userIcon = L.divIcon({ html: '📍', iconSize: [24, 24], className: 'user-marker-icon' });userMarker = L.marker([centerLat, centerLon],{ icon: userIcon }).addTo(mosqueMap);userMarker.bindPopup('Your location');mosqueMarkers = [];mosques.forEach((m, i) =>{ const emoji = m.dist < 1 ? '🕌' : '🕌';const icon = L.divIcon({ html: emoji, iconSize: [28, 28], className: 'mosque-marker-icon' });const marker = L.marker([m.lat, m.lon],{ icon }).addTo(mosqueMap);marker.bindPopup(`<b>${escapeHtml(m.name)}</b><br>📍 ${formatDistance(m.dist)}<br><a href="https://www.google.com/maps/dir/?api=1&destination=${m.lat},${m.lon}&travelmode=driving" target="_blank">🧭 Get Directions</a>`);mosqueMarkers.push(marker);});if (mosques.length > 0){ const bounds = L.latLngBounds([[centerLat, centerLon], ...mosques.map(m => [m.lat, m.lon])]);mosqueMap.fitBounds(bounds,{ padding: [30, 30] });}}function updateUserMarkerOnMap(){ if (!mosqueMap || !userGpsPos || !userMarker) return;userMarker.setLatLng([userGpsPos.lat, userGpsPos.lon]);}async function geocodeCity(cityName){ try{ const res = await fetchWithTimeout('https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(cityName),{}, 10000);const arr = await res.json();if (!Array.isArray(arr) || arr.length === 0) return null;return{ lat: parseFloat(arr[0].lat), lon: parseFloat(arr[0].lon), display: arr[0].display_name };}catch (e){ return null;}}async function findMosques(){ const loading = document.getElementById('mosqueLoading');const results = document.getElementById('mosqueResults');const errorEl = document.getElementById('mosqueError');loading.style.display = 'block';results.style.display = 'none';errorEl.style.display = 'none';let lat, lon, areaName;const savedLat = Settings.get('lastLat');const savedLon = Settings.get('lastLon');if (userGpsPos){ lat = userGpsPos.lat;lon = userGpsPos.lon;areaName = 'your live GPS location';}else if (savedLat && savedLon){ lat = parseFloat(savedLat);lon = parseFloat(savedLon);areaName = 'your saved location';}else{ updateGpsStatus('searching', null);try{ const pos = await new Promise((resolve, reject) =>{ navigator.geolocation.getCurrentPosition(resolve, reject,{ enableHighAccuracy: true, timeout: 10000 });});lat = pos.coords.latitude;lon = pos.coords.longitude;userGpsPos ={ lat, lon, accuracy: pos.coords.accuracy, heading: pos.coords.heading };Settings.set('lastLat', lat.toString());Settings.set('lastLon', lon.toString());updateGpsStatus('active', userGpsPos);areaName = 'your current GPS location';}catch (e){ loading.style.display = 'none';errorEl.style.display = 'block';errorEl.querySelector('p').textContent = 'Location access denied. Allow GPS or search by city instead.';updateGpsStatus('error', null);return;}}const radius = parseInt(document.getElementById('mosqueSearchRadius').value) || 10;await fetchMosquesFromOverpass(lat, lon, radius * 1000, areaName);}async function findMosquesByCity(){ const cityName = document.getElementById('mosqueCityInput').value.trim();if (!cityName) return;const loading = document.getElementById('mosqueLoading');const results = document.getElementById('mosqueResults');const errorEl = document.getElementById('mosqueError');loading.style.display = 'block';results.style.display = 'none';errorEl.style.display = 'none';const geo = await geocodeCity(cityName);if (!geo){ loading.style.display = 'none';errorEl.style.display = 'block';errorEl.querySelector('p').textContent = `Could not find "${cityName}". Try a different city name.`;return;}const radius = (parseInt(document.getElementById('mosqueSearchRadius').value) || 10) * 1000;await fetchMosquesFromOverpass(geo.lat, geo.lon, radius, geo.display);}async function fetchMosquesFromOverpass(lat, lon, radiusMeters, areaName){ const loading = document.getElementById('mosqueLoading');const results = document.getElementById('mosqueResults');const errorEl = document.getElementById('mosqueError');try{ const ovQuery = `[out:json][timeout:25];(node["amenity"="place_of_worship"]["religion"="muslim"](around:${radiusMeters},${lat},${lon});way["amenity"="place_of_worship"]["religion"="muslim"](around:${radiusMeters},${lat},${lon}););out center tags 60;`;let elements = null;
   // 1) Overpass: authoritative amenity data, but the public mirrors are frequently
   // overloaded, so each attempt is capped well below the old 25s.
-  for (const ep of ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter']){
-    try{
-      const res = await fetchWithTimeout(ep,{ method:'POST', headers:{ 'Content-Type':'application/x-www-form-urlencoded' }, body:'data=' + encodeURIComponent(ovQuery) }, 12000);
-      if (!res.ok) continue;
+  // One attempt only: a second dead mirror used to cost an extra 12s before the
+  // fast fallback was ever tried.
+  try{
+    const res = await fetchWithTimeout('https://overpass-api.de/api/interpreter',{ method:'POST', headers:{ 'Content-Type':'application/x-www-form-urlencoded' }, body:'data=' + encodeURIComponent(ovQuery) }, 8000);
+    if (res.ok){
       const j = await res.json();
-      if (j && Array.isArray(j.elements) && j.elements.length){ elements = j.elements; break; }
-    }catch(e){}
-  }
+      if (j && Array.isArray(j.elements) && j.elements.length) elements = j.elements;
+    }
+  }catch(e){}
   // 2) Photon (komoot) fallback: sub-second, global, name-based. Merges three
   // queries so recall stays reasonable when Overpass is down.
   if (!elements){
@@ -776,13 +777,18 @@ let tasbihCount = parseInt(Settings.get('tasbihCount', '0')) || 0;let tasbihTarg
     const dLon = dLat / Math.max(0.2, Math.cos(lat * Math.PI / 180));
     const bbox = `${(lon-dLon).toFixed(4)},${(lat-dLat).toFixed(4)},${(lon+dLon).toFixed(4)},${(lat+dLat).toFixed(4)}`;
     const merged = [], seenIds = new Set();
-    for (const term of ['mosque','masjid','islamic center']){
+    // three queries in parallel: ~1.5s total instead of ~4.5s sequential
+    const batches = await Promise.all(['mosque','masjid','islamic center'].map(async term =>{
       try{
         const u = `https://photon.komoot.io/api/?q=${encodeURIComponent(term)}&lat=${lat}&lon=${lon}&limit=40&bbox=${bbox}`;
-        const r = await fetchWithTimeout(u, {}, 8000);
-        if (!r.ok) continue;
+        const r = await fetchWithTimeout(u, {}, 6000);
+        if (!r.ok) return [];
         const j = await r.json();
-        for (const f of (j.features || [])){
+        return j.features || [];
+      }catch(e){ return []; }
+    }));
+    for (const feats of batches){
+        for (const f of feats){
           const pr = f.properties || {}; const c = f.geometry && f.geometry.coordinates;
           if (!c || !pr.name) continue;
           if (pr.osm_key === 'highway' || pr.osm_key === 'place') continue;
@@ -794,7 +800,6 @@ let tasbihCount = parseInt(Settings.get('tasbihCount', '0')) || 0;let tasbihTarg
           merged.push({ type:String(pr.osm_type || 'N').toLowerCase(), id:pr.osm_id, lat:c[1], lon:c[0],
             tags:{ name:pr.name, 'addr:street':pr.street, 'addr:housenumber':pr.housenumber, 'addr:city':pr.city, 'addr:postcode':pr.postcode } });
         }
-      }catch(e){}
     }
     if (merged.length) elements = merged;
   }
