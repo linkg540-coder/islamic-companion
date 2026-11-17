@@ -9,6 +9,8 @@
 // The Base44 function API (push subscribe, sync) is never cached.
 
 //
+// v3.1 (2026-11-17): ads now run on every app screen except prayer times, the
+//   Quran reader and the Qibla compass.
 // v3.0 (2026-11-17): ads moved into the app. js/app-ads.js carries four units
 //   (Knowledge, Locations, Mosque search, Journal) and js/quran-ads.js is now a
 //   no-op, so the standalone /quran/ pages carry no ads at all.
@@ -34,7 +36,7 @@
 // cache expired. The install step below already fetches with cache:'reload', so
 // touching this file is enough to hand clients a fresh shell.
 
-const VERSION = 'ic-v27';
+const VERSION = 'ic-v28';
 const SHELL = `${VERSION}-shell`;
 const QURAN = `${VERSION}-quran`;
 const STATIC = `${VERSION}-static`;
