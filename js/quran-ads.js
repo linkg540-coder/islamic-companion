@@ -11,9 +11,11 @@
   'use strict';
 
   var CLIENT = 'ca-pub-8105508666234797';
+  // Switched off on 17 Nov 2026: ads now live only inside the app (see
+  // js/app-ads.js). Both slots stay empty so this file leaves the pages alone.
   var SLOTS = {
-    top: '7522072149',   // "Quran Top"
-    bottom: '1278555430' // "Quran Bottom"
+    top: '',
+    bottom: ''
   };
 
   var want = [];
