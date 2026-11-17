@@ -9,6 +9,8 @@
 // The Base44 function API (push subscribe, sync) is never cached.
 
 //
+// v2.8 (2026-11-17): cache bump for the second live ad unit ("Quran Bottom" =
+//   1278555430) now that both SLOTS in js/quran-ads.js are populated.
 // v2.7 (2026-11-17): STATIC cache bump so the live ad-unit id in js/quran-ads.js
 //   (AdSense "Quran Top" = 7522072149) reaches returning readers instead of the
 //   cache-first copy with empty slots.
@@ -25,7 +27,7 @@
 // cache expired. The install step below already fetches with cache:'reload', so
 // touching this file is enough to hand clients a fresh shell.
 
-const VERSION = 'ic-v24';
+const VERSION = 'ic-v25';
 const SHELL = `${VERSION}-shell`;
 const QURAN = `${VERSION}-quran`;
 const STATIC = `${VERSION}-static`;
