@@ -9,6 +9,10 @@
 // The Base44 function API (push subscribe, sync) is never cached.
 
 //
+// v2.9 (2026-11-17): serve /js/quran-ads.js network-first. It carries the live ad
+//   unit ids, and the cache-first path kept re-storing a stale copy from the
+//   browser HTTP cache, so the second unit stayed invisible for 10+ minutes
+//   after deploy. This file is 3KB; going to the network costs nothing.
 // v2.8 (2026-11-17): cache bump for the second live ad unit ("Quran Bottom" =
 //   1278555430) now that both SLOTS in js/quran-ads.js are populated.
 // v2.7 (2026-11-17): STATIC cache bump so the live ad-unit id in js/quran-ads.js
@@ -27,7 +31,7 @@
 // cache expired. The install step below already fetches with cache:'reload', so
 // touching this file is enough to hand clients a fresh shell.
 
-const VERSION = 'ic-v25';
+const VERSION = 'ic-v26';
 const SHELL = `${VERSION}-shell`;
 const QURAN = `${VERSION}-quran`;
 const STATIC = `${VERSION}-static`;
@@ -131,6 +135,21 @@ self.addEventListener('fetch', e => {
   // tafsir (Ibn Kathir text per ayah) — open a verse once, read it offline after
   if (TAFSIR_HOSTS.indexOf(url.hostname) !== -1 && url.pathname.indexOf('/tafsir_api') !== -1) {
     e.respondWith(staleWhileRevalidate(req, QURAN));
+    return;
+  }
+
+  // ad-unit config: network first, so a deploy reaches readers immediately
+  if (url.origin === location.origin && url.pathname === '/js/quran-ads.js') {
+    e.respondWith((async () => {
+      const cache = await caches.open(STATIC);
+      try {
+        const res = await fetch(req, { cache: 'reload' });
+        if (res && res.ok) cache.put(req, res.clone()).catch(() => {});
+        return res;
+      } catch (err) {
+        return (await cache.match(req)) || Response.error();
+      }
+    })());
     return;
   }
 
