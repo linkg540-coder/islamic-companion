@@ -764,7 +764,7 @@ let tasbihCount = parseInt(Settings.get('tasbihCount', '0')) || 0;let tasbihTarg
   // One attempt only: a second dead mirror used to cost an extra 12s before the
   // fast fallback was ever tried.
   try{
-    const res = await fetchWithTimeout('https://overpass-api.de/api/interpreter',{ method:'POST', headers:{ 'Content-Type':'application/x-www-form-urlencoded' }, body:'data=' + encodeURIComponent(ovQuery) }, 8000);
+    const res = await fetchWithTimeout('https://overpass-api.de/api/interpreter',{ method:'POST', headers:{ 'Content-Type':'application/x-www-form-urlencoded' }, body:'data=' + encodeURIComponent(ovQuery) }, 4000);
     if (res.ok){
       const j = await res.json();
       if (j && Array.isArray(j.elements) && j.elements.length) elements = j.elements;
