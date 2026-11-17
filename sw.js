@@ -9,6 +9,9 @@
 // The Base44 function API (push subscribe, sync) is never cached.
 
 //
+// v3.0 (2026-11-17): ads moved into the app. js/app-ads.js carries four units
+//   (Knowledge, Locations, Mosque search, Journal) and js/quran-ads.js is now a
+//   no-op, so the standalone /quran/ pages carry no ads at all.
 // v2.9 (2026-11-17): serve /js/quran-ads.js network-first. It carries the live ad
 //   unit ids, and the cache-first path kept re-storing a stale copy from the
 //   browser HTTP cache, so the second unit stayed invisible for 10+ minutes
@@ -31,11 +34,11 @@
 // cache expired. The install step below already fetches with cache:'reload', so
 // touching this file is enough to hand clients a fresh shell.
 
-const VERSION = 'ic-v26';
+const VERSION = 'ic-v27';
 const SHELL = `${VERSION}-shell`;
 const QURAN = `${VERSION}-quran`;
 const STATIC = `${VERSION}-static`;
-const SHELL_FILES = ['./', './index.html', './js/app.js', './js/quran-player.js', './js/layers.js'];
+const SHELL_FILES = ['./', './index.html', './js/app.js', './js/quran-player.js', './js/layers.js', './js/app-ads.js'];
 const API_HOSTS = ['api.alquran.cloud', 'api.aladhan.com'];
 // tafsir is served from any of these mirrors; cache whichever one answered
 const TAFSIR_HOSTS = ['cdn.jsdelivr.net', 'fastly.jsdelivr.net', 'gcore.jsdelivr.net', 'raw.githubusercontent.com'];
