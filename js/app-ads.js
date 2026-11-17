@@ -1,25 +1,25 @@
 /* Islamic Companion, in-app ad units.
  *
- * Ads appear in exactly four sections and nowhere else, per /privacy.html:
- *   Knowledge (the AI question screen), Locations, Mosque search, Journal.
- * The Quran reader, the Qibla compass and the prayer-times screen never
- * carry an ad, and no ad interrupts a notification.
+ * Ads run on every app screen except three, per /privacy.html: the in-app
+ * Quran reader, the Qibla compass and the prayer-times screen never carry an
+ * ad, and the standalone /quran/ pages stay clean too (js/quran-ads.js is a
+ * deliberate no-op). No ad interrupts a notification.
  *
- * Each unit sits at the bottom of its section, below the content and the
+ * Each unit sits at the bottom of its screen, below the content and the
  * controls, so nothing a person is doing gets pushed around. Google requires
  * an ins element to be visible before it is pushed, so a unit is only pushed
- * when its section actually becomes the active tab.
+ * when its screen actually becomes the active tab.
  */
 (function () {
   'use strict';
 
   var CLIENT = 'ca-pub-8105508666234797';
-  var SECTIONS = [
-    { tab: 'ai',      slot: '7522072149' },  // Knowledge / AI answers
-    { tab: 'towns',   slot: '1278555430' },  // Locations
-    { tab: 'mosques', slot: '7522072149' },  // Mosque search
-    { tab: 'journal', slot: '1278555430' }   // Journal
-  ];
+
+  // Screens that must stay ad-free, whatever else changes.
+  var NEVER = ['tab-prayer', 'tab-quran', 'tab-qibla'];
+
+  // AdSense unit ids, used in rotation so the reports stay readable.
+  var SLOTS = ['7522072149', '1278555430'];
 
   function build(slot) {
     var wrap = document.createElement('div');
@@ -64,18 +64,24 @@
   }
 
   function mount() {
-    SECTIONS.forEach(function (s) {
-      var tab = document.getElementById('tab-' + s.tab);
-      if (!tab) return;
-      if (!tab.querySelector('.ic-ad')) tab.appendChild(build(s.slot));
+    var tabs = document.querySelectorAll('.tab-content[id]');
+    var n = 0;
+    for (var i = 0; i < tabs.length; i++) {
+      var tab = tabs[i];
+      if (NEVER.indexOf(tab.id) !== -1) continue;
+
+      if (!tab.querySelector('.ic-ad')) {
+        tab.appendChild(build(SLOTS[n % SLOTS.length]));
+      }
+      n++;
 
       if (!tab.getAttribute('data-ic-ad-watch')) {
         tab.setAttribute('data-ic-ad-watch', '1');
-        new MutationObserver(function () { fill(tab); })
+        new MutationObserver(function (t) { return function () { fill(t); }; }(tab))
           .observe(tab, { attributes: true, attributeFilter: ['class'] });
       }
       fill(tab);
-    });
+    }
   }
 
   if (document.readyState === 'loading') {
