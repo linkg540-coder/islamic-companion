@@ -13,7 +13,7 @@
   var CLIENT = 'ca-pub-8105508666234797';
   var SLOTS = {
     top: '7522072149',   // "Quran Top"
-    bottom: ''           // "Quran Bottom" - pending id
+    bottom: '1278555430' // "Quran Bottom"
   };
 
   var want = [];
