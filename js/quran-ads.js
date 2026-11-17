@@ -4,16 +4,16 @@
  * reading pages (/quran/...). The in-app Quran reader, the Qibla compass and
  * the prayer-times screen stay ad-free, and no ad interrupts a notification.
  *
- * TO GO LIVE: paste the two ad unit IDs below (AdSense > Ads > By ad unit >
- * Display ads). Leave a slot empty and that placement never touches the page.
+ * Ad unit ids live in SLOTS below. Leave a slot empty and that placement
+ * never touches the page at all.
  */
 (function () {
   'use strict';
 
   var CLIENT = 'ca-pub-8105508666234797';
   var SLOTS = {
-    top: '',     // ad unit id, e.g. '1234567890'
-    bottom: ''   // ad unit id, e.g. '0987654321'
+    top: '7522072149',   // "Quran Top"
+    bottom: ''           // "Quran Bottom" - pending id
   };
 
   var want = [];
